@@ -233,6 +233,7 @@ var DataCube = (function () {
 
 			this.canvas_context.drawImage(img, 0, 0);
 			var pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
+			var data32 = new Uint32Array(pixels.buffer); // creates a view, not an array
 
 			var shifts = {
 				1: 24,
@@ -245,47 +246,33 @@ var DataCube = (function () {
 			// This solution of shifting the bits is elegant, but individual implementations
 			// for 1, 2, and 4 bytes would be more efficient.
 
-			offsetz *= _this.size.x * _this.size.y;
+			var x = undefined,
+			    y = undefined,
+			    color = undefined;
 
-			var sizex = _this.size.x;
+			var sizex = _this.size.x,
+			    width = img.width,
+			    zadj = offsetz * _this.size.x * _this.size.y;
 
-			(function wow() {
-				var x = undefined,
-				    y = undefined;
+			for (var i = data32.length - 1; i >= 0; i--) {
+				x = offsetx + i % width;
+				y = offsety + ~ ~(i / width);
 
-				if (_this.bytes === 1) {
-					for (var i = pixels.length - 4; i >= 0; i -= 4) {
-						x = offsetx + i / 4 % img.width, y = offsety + Math.floor(i / 4 / img.width);
-
-						_this.cube[x + sizex * y + offsetz] = pixels[i];
-					}
-				} else if (_this.bytes === 2) {
-					for (var i = pixels.length - 4; i >= 0; i -= 4) {
-						x = offsetx + i / 4 % img.width, y = offsety + Math.floor(i / 4 / img.width);
-
-						_this.cube[x + sizex * y + offsetz] = pixels[i] | pixels[i + 1] << 8;
-					}
-				}
-			})();
-
-			// (function assignvalues () {
-
-			// 	for (let i = pixels.length - 4; i >= 0; i -= 4) {
-			// 		let r = pixels[i + 0],
-			// 			g = pixels[i + 1] << 8,
-			// 			b = pixels[i + 2] << 16,
-			// 			a = pixels[i + 3] << 24;
-
-			// 		//let value = (r + g + b + a) << lshift >>> lshift; // gives you filtered rgba value
-
-			// 		let x = offsetx + ((i / 4) % img.width),
-			// 			y = offsety + (Math.floor((i / 4) / img.width));
-
-			// 		_this.cube[x + _this.size.x * y + offsetz] = (r + g + b + a) << lshift >>> lshift;
-			// 	}
-			// })()
+				_this.cube[x + sizex * y + zadj] = data32[i] << lshift >>> lshift;
+			}
 
 			_this.clean = false;
+		}
+
+		// http://stackoverflow.com/questions/504030/javascript-endian-encoding
+	}, {
+		key: "isLittleEndian",
+		value: function isLittleEndian() {
+			var arr32 = new Uint32Array(1);
+			var arr8 = new Uint8Array(arr32.buffer);
+			arr32[0] = 255;
+
+			return arr8[0] === 255;
 		}
 	}, {
 		key: "get",

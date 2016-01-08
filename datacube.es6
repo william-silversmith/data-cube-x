@@ -193,6 +193,7 @@ class DataCube {
 
 		this.canvas_context.drawImage(img, 0, 0);
 		let pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
+		let data32 = new Uint32Array(pixels.buffer); // creates a view, not an array
 
 		let shifts = {
 			1: 24,
@@ -200,47 +201,34 @@ class DataCube {
 			4: 0,
 		};
 
-		let lshift = shifts[this.bytes];
+		const lshift = shifts[this.bytes];
 
 		// This solution of shifting the bits is elegant, but individual implementations
 		// for 1, 2, and 4 bytes would be more efficient.
-
-		offsetz *= _this.size.x * _this.size.y;
-
-		let sizex = _this.size.x;
 		
-		let x, y;
-		const width = img.width;
+		let x, y, color;
+		
+		const sizex = _this.size.x,
+			  width = img.width,
+			  zadj = offsetz * _this.size.x * _this.size.y;
 
-		if (_this.bytes === 1) {
-			for (let i = pixels.length - 4; i >= 0; i -= 4) {
-					x = offsetx + ((i / 4) % width),
-					y = offsety + (Math.floor((i / 4) / width));
+		for (let i = data32.length - 1; i >= 0; i--) {
+			x = offsetx + (i % width);
+			y = offsety + (~~(i / width));
 
-				_this.cube[x + sizex * y + offsetz] = pixels[i];
-			}
-		}
-		else if (_this.bytes === 2) {
-			for (let i = pixels.length - 4; i >= 0; i -= 4) {
-					x = offsetx + ((i / 4) % width),
-					y = offsety + (Math.floor((i / 4) / width));
-
-				_this.cube[x + sizex * y + offsetz] = pixels[i] | (pixels[i + 1] << 8);
-			}
-		}
-		else if (_this.bytes === 4) {
-			for (let i = pixels.length - 4; i >= 0; i -= 4) {
-					x = offsetx + ((i / 4) % width),
-					y = offsety + (Math.floor((i / 4) / width));
-
-				_this.cube[x + sizex * y + offsetz] = pixels[i] 
-					| (pixels[i + 1] << 8) 
-					| (pixels[i + 2] << 16) 
-					| (pixels[i + 3] << 24);
-			}
+			_this.cube[x + sizex * y + zadj] = (data32[i] << lshift >>> lshift);
 		}
 
 		_this.clean = false;
+	}
+
+	// http://stackoverflow.com/questions/504030/javascript-endian-encoding
+	isLittleEndian () {
+		var arr32 = new Uint32Array(1);
+		var arr8 = new Uint8Array(arr32.buffer);
+		arr32[0] = 255;
+
+		return arr8[0] === 255;
 	}
 
 	get (x, y = 0, z = 0) {
