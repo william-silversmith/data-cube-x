@@ -342,10 +342,36 @@ var DataCube = (function () {
 					}
 				}
 			} else if (axis === 'y') {
-				for (var x = 0; x < xsize; x++) {
-					for (var z = 0; z < zsize; z++) {
-						square[i] = _this.cube[x + xsize * index + xsize * ysize * z];
-						i++;
+				// One day, this can be accellerated with ArrayBuffer.transfer which is like memcpy
+				// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/transfer
+
+				// In the mean time, we can copy the x axis with a larger stride of 32 bits
+				// if we're looking at 8 or 16 bit, just like with canvas
+
+				if (_this.bytes < 4 && xsize % 4 === 0 && ysize % 4 === 0 && zsize % 4 === 0) {
+
+					var cube32 = new Uint32Array(_this.cube.buffer); // creates a view, not an array
+					var square32 = new Uint32Array(square.buffer);
+
+					var stride = _this.bytes === 1 ? 4 : 2;
+
+					var xsize32 = xsize / stride,
+					    ysize32 = ysize / stride,
+					    zsize32 = zsize / stride;
+
+					for (var x = 0; x < xsize32; x++) {
+						for (var z = 0; z < zsize32; z++) {
+							square32[i] = cube32[x + xsize32 * index + xsize32 * ysize32 * z];
+							i++;
+						}
+					}
+				} else {
+					// slow path, but only as slow as axis = x
+					for (var x = 0; x < xsize; x++) {
+						for (var z = 0; z < zsize; z++) {
+							square[i] = _this.cube[x + xsize * index + xsize * ysize * z];
+							i++;
+						}
 					}
 				}
 			}
