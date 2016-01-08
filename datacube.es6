@@ -11,6 +11,10 @@ class Volume {
 		this.channel = args.channel; // a data cube
 		this.segmentation = args.segmentation; // a segmentation cube
 
+		this.requests = [];
+	}
+
+	load () {
 		if (!this.channel.clean) {
 			this.channel.clear();
 		}
@@ -19,10 +23,10 @@ class Volume {
 			this.segmentation.clear();
 		}
 
-		this.requests = [];
+		let channel_promise = this.loadVolume(this.channel_id, this.channel);
+		let seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
 
-		this.loadVolume(this.channel_id, this.channel);
-		this.loadVolume(this.segmentation_id, this.segmentation);
+		return $.when(channel_promise, seg_promise);
 	}
 
 	killPending () {
@@ -51,11 +55,11 @@ class Volume {
 			requests.push(jqxhr);
 		})
 
-		$.when.apply($, requests).done(function () {
+		this.requests.push.apply(this.requests, requests);
+
+		return $.when.apply($, requests).done(function () {
 			cube.loaded = true;
 		});
-
-		this.requests.push.apply(this.requests, requests);
 
 		function decodeBase64Image (base64) {
 			let imageBuffer = new Image();
@@ -214,7 +218,7 @@ class DataCube {
 
 		for (let i = data32.length - 1; i >= 0; i--) {
 			x = offsetx + (i % width);
-			y = offsety + (~~(i / width));
+			y = offsety + (~~(i / width)); // ~~ is bit twidling Math.floor using bitwise not
 
 			color = (data32[i] >>> rshift << rshift);
 
@@ -422,15 +426,6 @@ class DataCube {
 		return ArrayType;
 	}
 }
-
-
-// main
-
-var onebyte = new DataCube({ bytes: 1 });
-var twobyte = new DataCube({ bytes: 2 });
-
-var v = new Volume({ channel_id: 2988, segmentation_id: 15656, channel: onebyte, segmentation: twobyte });
-
 
 
 

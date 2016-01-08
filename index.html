@@ -1,0 +1,25 @@
+<html>
+	<head>
+		<title>EXPERIMENTAL - Datacube Render Test | Eyewire</title>
+		<script src="./jquery-2.2.0.min"></script>
+		<script src="./datacube.js"></script>
+		<script>
+			// main
+
+			var vol = new Volume({ 
+				channel_id: 2988, 
+				segmentation_id: 15656, 
+				channel: new DataCube({ bytes: 1 }), 
+				segmentation: new DataCube({ bytes: 2 }), 
+			});
+
+			var canvas = $('#view')[0];
+			var ctx = canvas.getContext('2d');
+
+			vol.renderImageSlice(ctx, 'z', 0);
+		</script>
+	</head>
+	<body>
+		<canvas id="view" width="256" height="256" />
+	</body>
+</html>

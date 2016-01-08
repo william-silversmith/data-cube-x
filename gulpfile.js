@@ -4,11 +4,13 @@ var argv = require('yargs').argv,
 
 var fs = require('fs');
 
-gulp.task('default', ['js']);
+gulp.task('default', [ 'js' ]);
 
 gulp.task('js', function () {
 	return gulp.src('./datacube.es6')
-		.pipe(babel())
+		.pipe(babel({
+			presets: [ 'es2015' ],
+		}))
 		.pipe(gulp.dest('./'));
 });
 
