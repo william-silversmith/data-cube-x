@@ -241,7 +241,7 @@ var DataCube = (function () {
 				4: 0
 			};
 
-			var lshift = shifts[this.bytes];
+			var rshift = shifts[this.bytes];
 
 			// This solution of shifting the bits is elegant, but individual implementations
 			// for 1, 2, and 4 bytes would be more efficient.
@@ -258,7 +258,11 @@ var DataCube = (function () {
 				x = offsetx + i % width;
 				y = offsety + ~ ~(i / width);
 
-				_this.cube[x + sizex * y + zadj] = data32[i] << lshift >>> lshift;
+				color = data32[i] >>> rshift << rshift;
+
+				// rgba -> abgr in byte order
+
+				_this.cube[x + sizex * y + zadj] = color << 24 | (color & 0xff00) << 8 | (color & 0xff0000) >>> 8 | color >>> 24;
 			}
 
 			_this.clean = false;
@@ -348,20 +352,18 @@ var DataCube = (function () {
 				// In the mean time, we can copy the x axis with a larger stride of 32 bits
 				// if we're looking at 8 or 16 bit, just like with canvas
 
-				if (_this.bytes < 4 && xsize % 4 === 0 && ysize % 4 === 0 && zsize % 4 === 0) {
+				if (_this.bytes === 1 && xsize % 4 === 0 || _this.bytes === 2 && xsize % 2 === 0) {
 
 					var cube32 = new Uint32Array(_this.cube.buffer); // creates a view, not an array
 					var square32 = new Uint32Array(square.buffer);
 
 					var stride = _this.bytes === 1 ? 4 : 2;
 
-					var xsize32 = xsize / stride,
-					    ysize32 = ysize / stride,
-					    zsize32 = zsize / stride;
+					var xsize32 = xsize / stride;
 
 					for (var x = 0; x < xsize32; x++) {
-						for (var z = 0; z < zsize32; z++) {
-							square32[i] = cube32[x + xsize32 * index + xsize32 * ysize32 * z];
+						for (var z = 0; z < zsize; z++) {
+							square32[i] = cube32[x + xsize32 * index + xsize32 * ysize * z];
 							i++;
 						}
 					}

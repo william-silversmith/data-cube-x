@@ -201,7 +201,7 @@ class DataCube {
 			4: 0,
 		};
 
-		const lshift = shifts[this.bytes];
+		const rshift = shifts[this.bytes];
 
 		// This solution of shifting the bits is elegant, but individual implementations
 		// for 1, 2, and 4 bytes would be more efficient.
@@ -216,7 +216,16 @@ class DataCube {
 			x = offsetx + (i % width);
 			y = offsety + (~~(i / width));
 
-			_this.cube[x + sizex * y + zadj] = (data32[i] << lshift >>> lshift);
+			color = (data32[i] >>> rshift << rshift);
+
+			// rgba -> abgr in byte order
+
+			_this.cube[x + sizex * y + zadj] = (
+				(color << 24)
+				| ((color & 0xff00) << 8)
+				| ((color & 0xff0000) >>> 8) 
+				| (color >>> 24)
+			);
 		}
 
 		_this.clean = false;
