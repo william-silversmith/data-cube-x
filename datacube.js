@@ -90,12 +90,12 @@ var Volume = (function () {
 			var specs = [];
 
 			var CHUNK_SIZE = 128,
-			    BUNDLE_SIZE = 32; // results in ~130kb downloads per request
+			    BUNDLE_SIZE = 64; // results in ~130kb downloads per request
 
 			for (var x = 0; x <= 1; x++) {
 				for (var y = 0; y <= 1; y++) {
 					for (var z = 0; z <= 1; z++) {
-						for (var range = 0; range < CHUNK_SIZE - BUNDLE_SIZE; range += BUNDLE_SIZE) {
+						for (var range = 0; range <= CHUNK_SIZE - BUNDLE_SIZE; range += BUNDLE_SIZE) {
 							specs.push({
 								url: "http://cache.eyewire.org/volume/" + vid + "/chunk/0/" + x + "/" + y + "/" + z + "/tile/xy/" + range + ":" + (range + BUNDLE_SIZE),
 								x: x * CHUNK_SIZE,
@@ -234,40 +234,56 @@ var DataCube = (function () {
 			this.canvas_context.drawImage(img, 0, 0);
 			var pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
 
-			var right_shifts = {
+			var shifts = {
 				1: 24,
 				2: 16,
 				4: 0
 			};
 
-			var rshift = right_shifts[this.bytes];
+			var lshift = shifts[this.bytes];
 
 			// This solution of shifting the bits is elegant, but individual implementations
 			// for 1, 2, and 4 bytes would be more efficient.
 
 			offsetz *= _this.size.x * _this.size.y;
 
-			(function assignvalues() {
+			var sizex = _this.size.x;
 
-				for (var i = 0; i < pixels.length; i += 4) {
-					var r = pixels[i + 0] << 24,
-					    g = pixels[i + 1] << 16,
-					    b = pixels[i + 2] << 8,
-					    a = pixels[i + 3];
+			(function wow() {
+				var x = undefined,
+				    y = undefined;
 
-					var value = r + g + b + a >>> rshift << rshift; // gives you filtered rgba value
+				if (_this.bytes === 1) {
+					for (var i = pixels.length - 4; i >= 0; i -= 4) {
+						x = offsetx + i / 4 % img.width, y = offsety + Math.floor(i / 4 / img.width);
 
-					//if (this.bytes == 2 && value > 0) debugger;
+						_this.cube[x + sizex * y + offsetz] = pixels[i];
+					}
+				} else if (_this.bytes === 2) {
+					for (var i = pixels.length - 4; i >= 0; i -= 4) {
+						x = offsetx + i / 4 % img.width, y = offsety + Math.floor(i / 4 / img.width);
 
-					// reverse bytes in value
-					value = (value & 0xff) << 24 | (value & 0xff00) << 8 | (value & 0xff0000) >>> 8 | (value & 0xff000000) >>> 24;
-
-					var x = offsetx + i / 4 % img.width,
-					    y = offsety + Math.floor(i / 4 / img.width);
-
-					_this.cube[x + _this.size.x * y + offsetz] = value;
+						_this.cube[x + sizex * y + offsetz] = pixels[i] | pixels[i + 1] << 8;
+					}
 				}
 			})();
+
+			// (function assignvalues () {
+
+			// 	for (let i = pixels.length - 4; i >= 0; i -= 4) {
+			// 		let r = pixels[i + 0],
+			// 			g = pixels[i + 1] << 8,
+			// 			b = pixels[i + 2] << 16,
+			// 			a = pixels[i + 3] << 24;
+
+			// 		//let value = (r + g + b + a) << lshift >>> lshift; // gives you filtered rgba value
+
+			// 		let x = offsetx + ((i / 4) % img.width),
+			// 			y = offsety + (Math.floor((i / 4) / img.width));
+
+			// 		_this.cube[x + _this.size.x * y + offsetz] = (r + g + b + a) << lshift >>> lshift;
+			// 	}
+			// })()
 
 			_this.clean = false;
 		}
@@ -286,6 +302,15 @@ var DataCube = (function () {
    * x axis gets a yz plane, y gets xz, and z gets xy.
    *
    * z slicing is accelerated compared to the other two.
+   *
+   * Required:
+   *   axis: x, y, or z
+   *   index: 0 to size - 1 on that axis
+   *   
+   * Optional:
+   *    buffer: Write to this provided buffer instead of making one
+   *
+   * Return: 1d array
    */
 	}, {
 		key: "slice",
@@ -305,7 +330,7 @@ var DataCube = (function () {
 			}
 
 			if (axis === 'z') {
-				var offset = _this.size.x * _this.size.y * index;
+				var offset = _this.size.x * _this.size.y;
 				return _this.cube.subarray(offset * index, offset * (index + 1));
 			}
 
@@ -315,7 +340,7 @@ var DataCube = (function () {
 			var face = faces[axis];
 			var ArrayType = this.arrayType();
 
-			var square = new ArrayType(this.size[face[0]] * this.size[face[1]]);
+			var square = buffer || new ArrayType(this.size[face[0]] * this.size[face[1]]);
 
 			var xsize = _this.size.x,
 			    ysize = _this.size.y,

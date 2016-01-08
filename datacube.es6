@@ -78,12 +78,12 @@ class Volume {
 		let specs = [];
 
 		let CHUNK_SIZE = 128,
-			BUNDLE_SIZE = 32; // results in ~130kb downloads per request
+			BUNDLE_SIZE = 64; // results in ~130kb downloads per request
 
 		for (let x = 0; x <= 1; x++) {
 			for (let y = 0; y <= 1; y++) {
 				for (let z = 0; z <= 1; z++) {
-					for (let range = 0; range < CHUNK_SIZE - BUNDLE_SIZE; range += BUNDLE_SIZE) {
+					for (let range = 0; range <= CHUNK_SIZE - BUNDLE_SIZE; range += BUNDLE_SIZE) {
 						specs.push({
 							url: "http://cache.eyewire.org/volume/" + vid + "/chunk/0/" + x + "/" + y + "/" + z + "/tile/xy/" + range + ":" + (range + BUNDLE_SIZE),
 							x: x * CHUNK_SIZE,
@@ -194,43 +194,51 @@ class DataCube {
 		this.canvas_context.drawImage(img, 0, 0);
 		let pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
 
-		let right_shifts = {
+		let shifts = {
 			1: 24,
 			2: 16,
 			4: 0,
 		};
 
-		let rshift = right_shifts[this.bytes];
+		let lshift = shifts[this.bytes];
 
 		// This solution of shifting the bits is elegant, but individual implementations
 		// for 1, 2, and 4 bytes would be more efficient.
 
 		offsetz *= _this.size.x * _this.size.y;
 
-		(function assignvalues () {
+		let sizex = _this.size.x;
+		
+		let x, y;
+		const width = img.width;
 
-			for (let i = 0; i < pixels.length; i += 4) {
-				let r = pixels[i + 0] << 24,
-					g = pixels[i + 1] << 16,
-					b = pixels[i + 2] << 8,
-					a = pixels[i + 3];
+		if (_this.bytes === 1) {
+			for (let i = pixels.length - 4; i >= 0; i -= 4) {
+					x = offsetx + ((i / 4) % width),
+					y = offsety + (Math.floor((i / 4) / width));
 
-				let value = (r + g + b + a) >>> rshift << rshift; // gives you filtered rgba value
-
-				//if (this.bytes == 2 && value > 0) debugger;
-
-				// reverse bytes in value
-				value = ((value & 0xff) << 24)
-					  | ((value & 0xff00) << 8)
-					  | ((value & 0xff0000) >>> 8) 
-					  | ((value & 0xff000000) >>> 24);
-
-				let x = offsetx + ((i / 4) % img.width),
-					y = offsety + (Math.floor((i / 4) / img.width));
-
-				_this.cube[x + _this.size.x * y + offsetz] = value;
+				_this.cube[x + sizex * y + offsetz] = pixels[i];
 			}
-		})()
+		}
+		else if (_this.bytes === 2) {
+			for (let i = pixels.length - 4; i >= 0; i -= 4) {
+					x = offsetx + ((i / 4) % width),
+					y = offsety + (Math.floor((i / 4) / width));
+
+				_this.cube[x + sizex * y + offsetz] = pixels[i] | (pixels[i + 1] << 8);
+			}
+		}
+		else if (_this.bytes === 4) {
+			for (let i = pixels.length - 4; i >= 0; i -= 4) {
+					x = offsetx + ((i / 4) % width),
+					y = offsety + (Math.floor((i / 4) / width));
+
+				_this.cube[x + sizex * y + offsetz] = pixels[i] 
+					| (pixels[i + 1] << 8) 
+					| (pixels[i + 2] << 16) 
+					| (pixels[i + 3] << 24);
+			}
+		}
 
 		_this.clean = false;
 	}
@@ -245,6 +253,15 @@ class DataCube {
 	 * x axis gets a yz plane, y gets xz, and z gets xy.
 	 *
 	 * z slicing is accelerated compared to the other two.
+	 *
+	 * Required:
+	 *   axis: x, y, or z
+	 *   index: 0 to size - 1 on that axis
+	 *   
+	 * Optional:
+	 *    buffer: Write to this provided buffer instead of making one
+	 *
+	 * Return: 1d array
 	 */
 	slice (axis, index, buffer = null) {
 		let _this = this;
@@ -260,7 +277,7 @@ class DataCube {
 		}
 
 		if (axis === 'z') { 
-			let offset = _this.size.x * _this.size.y * index;
+			let offset = _this.size.x * _this.size.y;
 			return _this.cube.subarray(offset * index, offset * (index + 1));
 		}
 
@@ -270,7 +287,7 @@ class DataCube {
 		let face = faces[axis];
 		let ArrayType = this.arrayType();
 
-		let square = new ArrayType(this.size[face[0]] * this.size[face[1]]);
+		let square = buffer || (new ArrayType(this.size[face[0]] * this.size[face[1]]));
 
 		const xsize = _this.size.x,
 			ysize = _this.size.y,
