@@ -323,47 +323,56 @@ class DataCube {
 	slice (axis, index, buffer = null) {
 		let _this = this;
 
+		if (index < 0 || index >= this.size[axis]) {
+			throw new Error(index + ' is out of bounds.');
+		}
+
+		const xsize = _this.size.x,
+			ysize = _this.size.y,
+			zsize = _this.size.z;
+
+		const xysize = xsize * ysize;
+
+		// Go super fast... just because we can
+		if (axis === 'z' && !buffer) {
+			return _this.cube.subarray(xysize * index, xysize * (index + 1));
+		}
+
 		let faces = {
 			x: ['y', 'z'],
 			y: ['x', 'z'],
 			z: ['x', 'y'],
 		};
 
-		if (index < 0 || index >= this.size[axis]) {
-			throw new Error(index + ' is out of bounds.');
-		}
-
-		if (axis === 'z') { 
-			let offset = _this.size.x * _this.size.y;
-			return _this.cube.subarray(offset * index, offset * (index + 1));
-		}
-
-		// note, contiguous z access is most efficient,
-		// can use typedarray.subarray
-
 		let face = faces[axis];
 		let ArrayType = this.arrayType();
 
 		let square = buffer || (new ArrayType(this.size[face[0]] * this.size[face[1]]));
 
-		const xsize = _this.size.x,
-			ysize = _this.size.y,
-			zsize = _this.size.z;
-	
-		let i = 0;
+		let i = square.length - 1;
 		if (axis === 'x') {
-			for (let y = 0; y < ysize; y++) {
-				for (let z = 0; z < zsize; z++) {
-					square[i] = _this.cube[index + xsize * y + xsize * ysize * z];
-					i++;
+			for (let y = ysize - 1; y >= 0; --y) {
+				for (let z = zsize - 1; z >= 0; --z) {
+					square[i] = _this.cube[index + xsize * y + xysize * z];
+					--i;
 				}
 			}
 		}
-		else if (axis === 'y') { 
-			for (let x = 0; x < xsize; x++) {
-				for (let z = 0; z < zsize; z++) {
-					square[i] = _this.cube[x + xsize * index + xsize * ysize * z];
-					i++;
+		else if (axis === 'y') {
+			const yoffset = xsize * index;
+			for (let x = xsize - 1; x >= 0; --x) {
+				for (let z = zsize - 1; z >= 0; --z) {
+					square[i] = _this.cube[x + yoffset + xysize * z];
+					--i;
+				}
+			}
+		}
+		else if (axis === 'z') { 
+			const zoffset = xysize * index;
+			for (let x = xsize - 1; x >= 0; --x) {
+				for (let y = ysize - 1; y >= 0; --y) {
+					square[i] = _this.cube[x + xsize * y + zoffset];
+					--i;
 				}
 			}
 		}
@@ -404,7 +413,7 @@ class DataCube {
 
 		let data = imgdata.data;
 
-		let fixedalpha = this.bytes === 4 
+		let fixedalpha = this.bytes === 4 // no alpha channel w/ less than 4 bytes
 			? 0x00000000 
 			: 0xffffffff;
 
@@ -440,10 +449,6 @@ class DataCube {
 
 		const rmask = maskset.r;
 		let data = imgdata.data;
-
-		let fixedalpha = this.bytes === 4 
-			? 0x00 
-			: 0xff;
 
 		let di = data.length - 4;
 		for (let si = square.length - 1; si >= 0; si--) {
