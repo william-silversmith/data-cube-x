@@ -19,6 +19,8 @@
 			var AXIS = 'z';
 			var SLICE = 1;
 
+			var _needsrender = true;
+
 			$(document).ready(function () {
 				window.vol = new Volume({ 
 					channel_id: 2988, 
@@ -56,23 +58,35 @@
 			});
 
 			function render () {
+				// _needsrender = true;
+				hardRender();
+			}
+
+			function hardRender () {
 				$('#axis').text(AXIS);
+				$('#slice').text(SLICE);
 				vol.channel.renderGrayImageSlice(window.channelctx, AXIS, SLICE);
 				vol.segmentation.renderImageSlice(window.segctx, AXIS, SLICE);
+				_needsrender = false;
 			}
 
 			function clamp (val, min, max) {
 				return Math.min(Math.max(val, min), max);
 			}
 
-			requestAnimationFrame(function () {
-				render();
-			});
+			// requestAnimationFrame(function loop () {
+			// 	if (_needsrender) {
+			// 		hardRender();
+			// 	}
+
+			// 	requestAnimationFrame(loop);
+			// });
 
 		</script>
 	</head>
 	<body>
 		<p>AXIS: <span id="axis"></span></p>
+		<p>SLICE: <span id="slice"></span></p>
 		CHANNEL<br>
 		<canvas id="channel" width="256" height="256"></canvas>
 		<br>
