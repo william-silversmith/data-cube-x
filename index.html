@@ -15,7 +15,6 @@
 		</style>
 
 		<script>
-
 			var AXIS = 'z';
 			var SLICE = 1;
 
@@ -34,7 +33,12 @@
 				window.channelctx = $('#channel')[0].getContext('2d');
 				window.segctx = $('#segmentation')[0].getContext('2d');
 
-				vol.load().done(function () {
+				var progress = setInterval(function () {
+					render();
+				}, 200);
+
+				vol.load().always(function () {
+					clearInterval(progress);
 					render();
 				});
 			});
@@ -63,10 +67,16 @@
 			}
 
 			function hardRender () {
-				$('#axis').text(AXIS);
-				$('#slice').text(SLICE);
 				vol.channel.renderGrayImageSlice(window.channelctx, AXIS, SLICE);
 				vol.segmentation.renderImageSlice(window.segctx, AXIS, SLICE);
+
+				$('#axis').text(AXIS);
+				$('#slice').text(SLICE);
+
+				var progress = Math.round(vol.loadingProgress() * 100);
+				$('#loading').text(progress + '%');
+
+
 				_needsrender = false;
 			}
 
@@ -92,5 +102,6 @@
 		<br>
 		SEGMENTATION<br>
 		<canvas id="segmentation" width="256" height="256"></canvas>
+		<p>LOADING: <span id="loading"></span></p>
 	</body>
 </html>

@@ -24,6 +24,8 @@ var Volume = function () {
 	_createClass(Volume, [{
 		key: "load",
 		value: function load() {
+			var _this = this;
+
 			if (!this.channel.clean) {
 				this.channel.clear();
 			}
@@ -32,10 +34,32 @@ var Volume = function () {
 				this.segmentation.clear();
 			}
 
+			this.requests = [];
+
 			var channel_promise = this.loadVolume(this.channel_id, this.channel);
 			var seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
 
-			return $.when(channel_promise, seg_promise);
+			return $.when(channel_promise, seg_promise).always(function () {
+				_this.requests = [];
+			});
+		}
+	}, {
+		key: "loadingProgress",
+		value: function loadingProgress() {
+			if (this.segmentation.loaded && this.channel.loaded) {
+				return 1;
+			} else if (this.segmentation.clean && this.channel.clean) {
+				return 0;
+			} else if (this.requests.length === 0) {
+				return 0;
+			}
+
+			var specs = this.generateUrls();
+
+			var resolved = this.requests.filter(function (req) {
+				return req.state() === 'resolved';
+			});
+			return resolved.length / (2 * specs.length);
 		}
 	}, {
 		key: "killPending",
@@ -136,7 +160,7 @@ var Volume = function () {
 			var specs = [];
 
 			var CHUNK_SIZE = 128,
-			    BUNDLE_SIZE = 128; // results in ~130kb downloads per request
+			    BUNDLE_SIZE = 4; // results in ~130kb downloads per request
 
 			for (var x = 0; x <= 1; x++) {
 				for (var y = 0; y <= 1; y++) {
