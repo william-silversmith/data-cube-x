@@ -121,7 +121,7 @@ class Volume {
 		let specs = [];
 
 		let CHUNK_SIZE = 128,
-			BUNDLE_SIZE = 64; // results in ~130kb downloads per request
+			BUNDLE_SIZE = 128; // results in ~130kb downloads per request
 
 		for (let x = 0; x <= 1; x++) {
 			for (let y = 0; y <= 1; y++) {
