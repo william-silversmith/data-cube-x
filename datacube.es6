@@ -35,6 +35,37 @@ class Volume {
 		});
 	}
 
+	fakeLoad () {
+		if (!this.channel.clean) {
+			this.channel.clear();
+		}
+
+		if (!this.segmentation.clean) {
+			this.segmentation.clear();
+		}
+
+		let channel_promise = this.fakeLoadVolume(this.channel_id, this.channel);
+		let seg_promise = this.fakeLoadVolume(this.segmentation_id, this.segmentation);
+
+		return $.when(channel_promise, seg_promise);
+	}
+
+	fakeLoadVolume (vid, cube) {
+		// 8 * 4 chunks + 4 single tiles per channel
+		let _this = this;
+
+		let specs = this.generateUrls(vid);
+
+		specs.forEach(function (spec) {
+			var img = new Image(128, 128); // test code
+			cube.insertImage(img, spec.x, spec.y, spec.z);
+		});
+
+		return $.Deferred().resolve().done(function () { // test code
+			cube.loaded = true;
+		});
+	}
+
 	loadVolume (vid, cube) {
 		// 8 * 4 chunks + 4 single tiles per channel
 		let _this = this;
@@ -196,8 +227,13 @@ class DataCube {
 		let _this = this;
 
 		this.canvas_context.drawImage(img, 0, 0);
+		// this.canvas_context.fillStyle = 'rgba(33, 128, 0, 255)';
+		// this.canvas_context.fillRect(0, 0, img.width, img.height);
+
 		let pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
 		let data32 = new Uint32Array(pixels.buffer); // creates a view, not an array
+
+		// Note: on little endian machine, data32 is 0xaabbggrr, so it's already flipped
 
 		let shifts = {
 			1: 24,
@@ -205,7 +241,7 @@ class DataCube {
 			4: 0,
 		};
 
-		const rshift = shifts[this.bytes];
+		const shift = shifts[this.bytes];
 
 		// This solution of shifting the bits is elegant, but individual implementations
 		// for 1, 2, and 4 bytes would be more efficient.
@@ -216,20 +252,30 @@ class DataCube {
 			  width = img.width,
 			  zadj = offsetz * _this.size.x * _this.size.y;
 
-		for (let i = data32.length - 1; i >= 0; i--) {
-			x = offsetx + (i % width);
-			y = offsety + (~~(i / width)); // ~~ is bit twidling Math.floor using bitwise not
+		if (this.isLittleEndian()) {
+			for (let i = data32.length - 1; i >= 0; i--) {
+				x = offsetx + (i % width);
+				y = offsety + (~~(i / width)); // ~~ is bit twidling Math.floor using bitwise not
 
-			color = (data32[i] >>> rshift << rshift);
+				_this.cube[x + sizex * y + zadj] = (data32[i] << shift >>> shift);	
+			}
+		}
+		else {
+			for (let i = data32.length - 1; i >= 0; i--) {
+				x = offsetx + (i % width);
+				y = offsety + (~~(i / width)); // ~~ is bit twidling Math.floor using bitwise not
 
-			// rgba -> abgr in byte order
+				color = (data32[i] >>> shift << shift);
 
-			_this.cube[x + sizex * y + zadj] = (
-				(color << 24)
-				| ((color & 0xff00) << 8)
-				| ((color & 0xff0000) >>> 8) 
-				| (color >>> 24)
-			);
+				// rgba -> abgr in byte order
+
+				_this.cube[x + sizex * y + zadj] = (
+					(color << 24)
+					| ((color & 0xff00) << 8)
+					| ((color & 0xff0000) >>> 8) 
+					| (color >>> 24)
+				);
+			}
 		}
 
 		_this.clean = false;
@@ -359,34 +405,12 @@ class DataCube {
 
 		let imgdata = context.createImageData(size[0], size[1]);
 
-		let bitmasks = {
-			1: {
-				r: [ 0xff, 0 ], // mask, zpad right shift
-				g: [ 0x00, 0 ],
-				b: [ 0x00, 0 ],
-				a: [ 0x00, 0 ],
-			},
-			2: {
-				r: [ 0xff00, 8 ],
-				g: [ 0x00ff, 0 ],
-				b: [ 0x0000, 0 ],
-				a: [ 0x0000, 0 ], 
-			},
-			4: {
-				r: [ 0xff000000, 24 ],
-				g: [ 0x00ff0000, 16 ],
-				b: [ 0x0000ff00, 8 ],
-				a: [ 0x000000ff, 0 ],
-			},
-		};
+		let maskset = this.getRenderMaskSet();
 
-		const rmask = bitmasks[this.bytes].r[0],
-			gmask = bitmasks[this.bytes].g[0],
-			bmask = bitmasks[this.bytes].b[0];
-
-		const rshift = bitmasks[this.bytes].r[1],
-			gshift = bitmasks[this.bytes].g[1],
-			bshift = bitmasks[this.bytes].b[1];
+		const rmask = maskset.r,
+			gmask = maskset.g,
+			bmask = maskset.b,
+			amask = maskset.a;
 
 		// if we break this for loop up by bytes, we can extract extra performance.
 		// If we want to handle transparency efficiently, you'll want to break out the
@@ -397,17 +421,77 @@ class DataCube {
 
 		let data = imgdata.data;
 
-		let i = data.length - 4;
-		for (let i = square.length - 1; i >= 0; i--) {
-			data[i + 0] = (square[i] & rmask) >>> rshift; 
-			data[i + 1] = (square[i] & gmask) >>> gshift;
-			data[i + 2] = (square[i] & bmask) >>> bshift;
-			data[i + 3] = 255; // can handle transparency specially if necessary
+		let fixedalpha = this.bytes === 4 
+			? 0x00 
+			: 0xff;
+
+		let di = data.length - 4;
+		for (let si = square.length - 1; si >= 0; si--) {
+			data[di + 0] = (square[si] & rmask); 
+			data[di + 1] = (square[si] & gmask);
+			data[di + 2] = (square[si] & bmask);
+			data[di + 3] = (square[si] & amask) | fixedalpha; // can handle transparency specially if necessary
 				
-			i -= 4;
+			di -= 4;
 		}
 
 		context.putImageData(imgdata, 0, 0);
+	}
+
+	renderGrayImageSlice (context, axis, index) {
+		let _this = this;
+
+		let square = this.slice(axis, index);
+
+		let sizes = {
+			x: [ _this.size.y, _this.size.z ],
+			y: [ _this.size.x, _this.size.z ],
+			z: [ _this.size.x, _this.size.y ],
+		};
+
+		let size = sizes[axis];
+
+		let imgdata = context.createImageData(size[0], size[1]);
+
+		let maskset = this.getRenderMaskSet();
+
+		const rmask = maskset.r;
+		let data = imgdata.data;
+
+		let fixedalpha = this.bytes === 4 
+			? 0x00 
+			: 0xff;
+
+		let di = data.length - 4;
+		for (let si = square.length - 1; si >= 0; si--) {
+			data[di + 0] = (square[si] & rmask); 
+			data[di + 1] = (square[si] & rmask);
+			data[di + 2] = (square[si] & rmask);
+			data[di + 3] = 255; 
+				
+			di -= 4;
+		}
+
+		context.putImageData(imgdata, 0, 0);
+	}
+
+	getRenderMaskSet () {
+		let bitmasks = {
+			true: { // little endian, most architectures
+				r: 0x000000ff,
+				g: 0x0000ff00,
+				b: 0x00ff0000,
+				a: 0xff000000,
+			},
+			false: { // big endian, mostly ARM and some specialized equipment
+				r: 0xff000000,
+				g: 0x00ff0000,
+				b: 0x0000ff00,
+				a: 0x000000ff,
+			},
+		};
+
+		return bitmasks[this.isLittleEndian()];
 	}
 
 	arrayType () {

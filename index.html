@@ -1,25 +1,44 @@
 <html>
 	<head>
 		<title>EXPERIMENTAL - Datacube Render Test | Eyewire</title>
-		<script src="./jquery-2.2.0.min"></script>
+		<script src="./jquery-2.2.0.min.js"></script>
 		<script src="./datacube.js"></script>
+
+		<style>
+			canvas {
+				border: 1px dotted blue;
+			}
+		</style>
+
 		<script>
-			// main
+			$(document).ready(function () {
+				window.vol = new Volume({ 
+					channel_id: 2988, 
+					segmentation_id: 15656, 
+					channel: new DataCube({ bytes: 1 }), 
+					segmentation: new DataCube({ bytes: 2 }), 
+				});
 
-			var vol = new Volume({ 
-				channel_id: 2988, 
-				segmentation_id: 15656, 
-				channel: new DataCube({ bytes: 1 }), 
-				segmentation: new DataCube({ bytes: 2 }), 
+				var vol = window.vol;
+
+				window.channelctx = $('#channel')[0].getContext('2d');
+				window.segctx = $('#segmentation')[0].getContext('2d');
+
+				vol.load().done(function () {
+					var axis = 'z';
+					var index = 0;
+
+					vol.channel.renderGrayImageSlice(window.channelctx, axis, index);
+					vol.segmentation.renderImageSlice(window.segctx, axis, index);
+				});
 			});
-
-			var canvas = $('#view')[0];
-			var ctx = canvas.getContext('2d');
-
-			vol.renderImageSlice(ctx, 'z', 0);
 		</script>
 	</head>
 	<body>
-		<canvas id="view" width="256" height="256" />
+		CHANNEL<br>
+		<canvas id="channel" width="256" height="256"></canvas>
+		<br>
+		SEGMENTATION<br>
+		<canvas id="segmentation" width="256" height="256"></canvas>
 	</body>
 </html>
