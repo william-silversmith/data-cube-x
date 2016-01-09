@@ -57,8 +57,10 @@ class Volume {
 		let specs = this.generateUrls(vid);
 
 		specs.forEach(function (spec) {
-			var img = new Image(128, 128); // test code
-			cube.insertImage(img, spec.x, spec.y, spec.z);
+			let img = new Image(128, 128); // test code
+			for (let i = 0; i < spec.depth; i++) {
+				cube.insertImage(img, spec.x, spec.y, spec.z + i);
+			}
 		});
 
 		return $.Deferred().resolve().done(function () { // test code
@@ -76,10 +78,13 @@ class Volume {
 
 		specs.forEach(function (spec) {
 			let jqxhr = $.getJSON(spec.url).done(function (results) {
+				let z = 0;
 				results.forEach(function (result) {
-					decodeBase64Image(result.data).done(function (img) {
-						cube.insertImage(img, spec.x, spec.y, spec.z);
+					decodeBase64Image(result.data, z).done(function (imgz) {
+						cube.insertImage(imgz.img, spec.x, spec.y, spec.z + imgz.z);
 					});
+
+					z++;
 				});
 			});
 
@@ -92,13 +97,16 @@ class Volume {
 			cube.loaded = true;
 		});
 
-		function decodeBase64Image (base64) {
+		function decodeBase64Image (base64, z) {
 			let imageBuffer = new Image();
 
 			let deferred = $.Deferred();
 
  		 	imageBuffer.onload = function () {
-    			deferred.resolve(this);
+    			deferred.resolve({
+    				img: this,
+    				z: z,
+    			});
   			};
 
   			imageBuffer.src = base64;
@@ -226,8 +234,10 @@ class DataCube {
 	insertImage (img, offsetx = 0, offsety = 0, offsetz = 0) {
 		let _this = this;
 
+		//console.log(offsetx, offsety, offsetz)
+
 		this.canvas_context.drawImage(img, 0, 0);
-		// this.canvas_context.fillStyle = 'rgba(33, 128, 0, 255)';
+		// this.canvas_context.fillStyle = 'rgba(128, 0, 0, 255)';
 		// this.canvas_context.fillRect(0, 0, img.width, img.height);
 
 		let pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
@@ -350,37 +360,10 @@ class DataCube {
 			}
 		}
 		else if (axis === 'y') { 
-			// One day, this can be accellerated with ArrayBuffer.transfer which is like memcpy
-			// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/transfer
-
-			// In the mean time, we can copy the x axis with a larger stride of 32 bits
-			// if we're looking at 8 or 16 bit, just like with canvas
-
-			if ((_this.bytes === 1 
-					&& xsize % 4 === 0)
-				|| (_this.bytes === 2
-					&& xsize % 2 === 0)) {
-
-				let cube32 = new Uint32Array(_this.cube.buffer); // creates a view, not an array
-				let square32 = new Uint32Array(square.buffer);
-
-				let stride = _this.bytes === 1 ? 4 : 2;
-
-				const xsize32 = xsize / stride;
-
-				for (let x = 0; x < xsize32; x++) {
-					for (let z = 0; z < zsize; z++) {
-						square32[i] = cube32[x + xsize32 * index + xsize32 * ysize * z];
-						i++;
-					}
-				}
-			}
-			else { // slow path, but only as slow as axis = x
-				for (let x = 0; x < xsize; x++) {
-					for (let z = 0; z < zsize; z++) {
-						square[i] = _this.cube[x + xsize * index + xsize * ysize * z];
-						i++;
-					}
+			for (let x = 0; x < xsize; x++) {
+				for (let z = 0; z < zsize; z++) {
+					square[i] = _this.cube[x + xsize * index + xsize * ysize * z];
+					i++;
 				}
 			}
 		}
@@ -422,15 +405,15 @@ class DataCube {
 		let data = imgdata.data;
 
 		let fixedalpha = this.bytes === 4 
-			? 0x00 
-			: 0xff;
+			? 0x00000000 
+			: 0xffffffff;
 
 		let di = data.length - 4;
 		for (let si = square.length - 1; si >= 0; si--) {
 			data[di + 0] = (square[si] & rmask); 
-			data[di + 1] = (square[si] & gmask);
-			data[di + 2] = (square[si] & bmask);
-			data[di + 3] = (square[si] & amask) | fixedalpha; // can handle transparency specially if necessary
+			data[di + 1] = (square[si] & gmask) >>> 8;
+			data[di + 2] = (square[si] & bmask) >>> 16;
+			data[di + 3] = ((square[si] & amask) | fixedalpha) >>> 24; // can handle transparency specially if necessary
 				
 			di -= 4;
 		}

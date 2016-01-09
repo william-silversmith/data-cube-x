@@ -25,8 +25,8 @@
 				window.segctx = $('#segmentation')[0].getContext('2d');
 
 				vol.load().done(function () {
-					var axis = 'z';
-					var index = 0;
+					var axis = 'y';
+					var index = 1;
 
 					vol.channel.renderGrayImageSlice(window.channelctx, axis, index);
 					vol.segmentation.renderImageSlice(window.segctx, axis, index);
