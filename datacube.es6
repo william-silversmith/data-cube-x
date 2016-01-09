@@ -291,15 +291,6 @@ class DataCube {
 		_this.clean = false;
 	}
 
-	// http://stackoverflow.com/questions/504030/javascript-endian-encoding
-	isLittleEndian () {
-		var arr32 = new Uint32Array(1);
-		var arr8 = new Uint8Array(arr32.buffer);
-		arr32[0] = 255;
-
-		return arr8[0] === 255;
-	}
-
 	get (x, y = 0, z = 0) {
 		return this.cube[x + this.size.x * y + this.size.x * this.size.y * z];
 	}
@@ -461,6 +452,15 @@ class DataCube {
 		}
 
 		context.putImageData(imgdata, 0, 0);
+	}
+
+	// http://stackoverflow.com/questions/504030/javascript-endian-encoding
+	isLittleEndian () {
+		var arr32 = new Uint32Array(1);
+		var arr8 = new Uint8Array(arr32.buffer);
+		arr32[0] = 255;
+
+		return arr8[0] === 255;
 	}
 
 	getRenderMaskSet () {
