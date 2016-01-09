@@ -5,12 +5,20 @@
 		<script src="./datacube.js"></script>
 
 		<style>
+			html {
+				overflow: hidden;
+			}
+
 			canvas {
 				border: 1px dotted blue;
 			}
 		</style>
 
 		<script>
+
+			var AXIS = 'z';
+			var SLICE = 1;
+
 			$(document).ready(function () {
 				window.vol = new Volume({ 
 					channel_id: 2988, 
@@ -25,16 +33,41 @@
 				window.segctx = $('#segmentation')[0].getContext('2d');
 
 				vol.load().done(function () {
-					var axis = 'y';
-					var index = 1;
-
-					vol.channel.renderGrayImageSlice(window.channelctx, axis, index);
-					vol.segmentation.renderImageSlice(window.segctx, axis, index);
+					render();
 				});
 			});
+
+			$(document).on('wheel', function (e) {
+				var delta = clamp(e.originalEvent.deltaY, -5, 5);
+
+				SLICE += delta;
+				SLICE = clamp(SLICE, 0, 255);
+
+				render();
+			});
+
+			var AXES = ['z', 'y', 'x'];
+
+			$(document).on('keyup', function () {
+				var index = (AXES.indexOf(AXIS) + 1) % AXES.length;
+				AXIS = AXES[index];
+
+				render();
+			});
+
+			function render () {
+				$('#axis').text(AXIS);
+				vol.channel.renderGrayImageSlice(window.channelctx, AXIS, SLICE);
+				vol.segmentation.renderImageSlice(window.segctx, AXIS, SLICE);
+			}
+
+			function clamp (val, min, max) {
+				return Math.min(Math.max(val, min), max);
+			}
 		</script>
 	</head>
 	<body>
+		<p>AXIS: <span id="axis"></span></p>
 		CHANNEL<br>
 		<canvas id="channel" width="256" height="256"></canvas>
 		<br>
