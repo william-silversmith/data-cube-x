@@ -100,7 +100,7 @@ class Volume {
 		let requests = [];
 
 		specs.forEach(function (spec) {
-			let jqxhr = $.getJSON(spec.url).done(function (results) {
+			function decodeAndInsertImages (results) {
 				let z = 0;
 				results.forEach(function (result) {
 					decodeBase64Image(result.data, z).done(function (imgz) {
@@ -109,7 +109,19 @@ class Volume {
 
 					z++;
 				});
-			});
+			}
+
+			let jqxhr = $.getJSON(spec.url)
+				.done(decodeAndInsertImages)
+				.fail(function () { // If it fails, one retry.
+					setTimeout(function () {
+						$.getJSON(spec.url)
+							.done(decodeAndInsertImages)
+							.fail(function () {
+								console.error(spec.url + ' failed to load.');
+							});
+					}, 1000);
+				})
 
 			requests.push(jqxhr);
 		})
@@ -144,7 +156,7 @@ class Volume {
 		let specs = [];
 
 		let CHUNK_SIZE = 128,
-			BUNDLE_SIZE = 4; // results in ~130kb downloads per request
+			BUNDLE_SIZE = 64; // results in ~130kb downloads per request
 
 		for (let x = 0; x <= 1; x++) {
 			for (let y = 0; y <= 1; y++) {

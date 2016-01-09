@@ -40,6 +40,12 @@
 				vol.load().always(function () {
 					clearInterval(progress);
 					render();
+
+					// Cover gap between finish requests and 
+					// decoding images.
+					setTimeout(function () {
+						render();
+					}, 250);
 				});
 			});
 

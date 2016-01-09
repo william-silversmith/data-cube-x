@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -22,7 +22,7 @@ var Volume = function () {
 	}
 
 	_createClass(Volume, [{
-		key: "load",
+		key: 'load',
 		value: function load() {
 			var _this = this;
 
@@ -44,7 +44,7 @@ var Volume = function () {
 			});
 		}
 	}, {
-		key: "loadingProgress",
+		key: 'loadingProgress',
 		value: function loadingProgress() {
 			if (this.segmentation.loaded && this.channel.loaded) {
 				return 1;
@@ -62,14 +62,14 @@ var Volume = function () {
 			return resolved.length / (2 * specs.length);
 		}
 	}, {
-		key: "killPending",
+		key: 'killPending',
 		value: function killPending() {
 			this.requests.forEach(function (jqxhr) {
 				jqxhr.abort();
 			});
 		}
 	}, {
-		key: "fakeLoad",
+		key: 'fakeLoad',
 		value: function fakeLoad() {
 			if (!this.channel.clean) {
 				this.channel.clear();
@@ -85,7 +85,7 @@ var Volume = function () {
 			return $.when(channel_promise, seg_promise);
 		}
 	}, {
-		key: "fakeLoadVolume",
+		key: 'fakeLoadVolume',
 		value: function fakeLoadVolume(vid, cube) {
 			// 8 * 4 chunks + 4 single tiles per channel
 			var _this = this;
@@ -105,7 +105,7 @@ var Volume = function () {
 			});
 		}
 	}, {
-		key: "loadVolume",
+		key: 'loadVolume',
 		value: function loadVolume(vid, cube) {
 			// 8 * 4 chunks + 4 single tiles per channel
 			var _this = this;
@@ -115,7 +115,7 @@ var Volume = function () {
 			var requests = [];
 
 			specs.forEach(function (spec) {
-				var jqxhr = $.getJSON(spec.url).done(function (results) {
+				function decodeAndInsertImages(results) {
 					var z = 0;
 					results.forEach(function (result) {
 						decodeBase64Image(result.data, z).done(function (imgz) {
@@ -124,6 +124,15 @@ var Volume = function () {
 
 						z++;
 					});
+				}
+
+				var jqxhr = $.getJSON(spec.url).done(decodeAndInsertImages).fail(function () {
+					// If it fails, one retry.
+					setTimeout(function () {
+						$.getJSON(spec.url).done(decodeAndInsertImages).fail(function () {
+							console.error(spec.url + ' failed to load.');
+						});
+					}, 1000);
 				});
 
 				requests.push(jqxhr);
@@ -153,14 +162,14 @@ var Volume = function () {
 			}
 		}
 	}, {
-		key: "generateUrls",
+		key: 'generateUrls',
 		value: function generateUrls(vid) {
 			var _this = this;
 
 			var specs = [];
 
 			var CHUNK_SIZE = 128,
-			    BUNDLE_SIZE = 4; // results in ~130kb downloads per request
+			    BUNDLE_SIZE = 64; // results in ~130kb downloads per request
 
 			for (var x = 0; x <= 1; x++) {
 				for (var y = 0; y <= 1; y++) {
@@ -204,7 +213,7 @@ var DataCube = function () {
 	}
 
 	_createClass(DataCube, [{
-		key: "createImageContext",
+		key: 'createImageContext',
 		value: function createImageContext() {
 			var canvas = document.createElement('canvas');
 			canvas.width = this.size.x;
@@ -216,7 +225,7 @@ var DataCube = function () {
 		// This is an expensive operation
 
 	}, {
-		key: "materialize",
+		key: 'materialize',
 		value: function materialize() {
 			var ArrayType = this.arrayType();
 
@@ -225,7 +234,7 @@ var DataCube = function () {
 			return new ArrayType(size.x * size.y * size.z);
 		}
 	}, {
-		key: "clear",
+		key: 'clear',
 		value: function clear() {
 			this.cube.fill(0);
 			this.clean = true;
@@ -240,7 +249,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: "insertSquare",
+		key: 'insertSquare',
 		value: function insertSquare(square, width) {
 			var offsetx = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
 			var offsety = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
@@ -264,7 +273,7 @@ var DataCube = function () {
 			_this.clean = false;
 		}
 	}, {
-		key: "insertImage",
+		key: 'insertImage',
 		value: function insertImage(img) {
 			var offsetx = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 			var offsety = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
@@ -325,7 +334,7 @@ var DataCube = function () {
 			_this.clean = false;
 		}
 	}, {
-		key: "get",
+		key: 'get',
 		value: function get(x) {
 			var y = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 			var z = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
@@ -351,7 +360,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: "slice",
+		key: 'slice',
 		value: function slice(axis, index) {
 			var buffer = arguments.length <= 2 || arguments[2] === undefined ? null : arguments[2];
 
@@ -416,7 +425,7 @@ var DataCube = function () {
 		// returns a data buffer suited to setting the canvas
 
 	}, {
-		key: "renderImageSlice",
+		key: 'renderImageSlice',
 		value: function renderImageSlice(context, axis, index) {
 			var _this = this;
 
@@ -464,7 +473,7 @@ var DataCube = function () {
 			context.putImageData(imgdata, 0, 0);
 		}
 	}, {
-		key: "renderGrayImageSlice",
+		key: 'renderGrayImageSlice',
 		value: function renderGrayImageSlice(context, axis, index) {
 			var _this = this;
 
@@ -501,7 +510,7 @@ var DataCube = function () {
 		// http://stackoverflow.com/questions/504030/javascript-endian-encoding
 
 	}, {
-		key: "isLittleEndian",
+		key: 'isLittleEndian',
 		value: function isLittleEndian() {
 			var arr32 = new Uint32Array(1);
 			var arr8 = new Uint8Array(arr32.buffer);
@@ -510,7 +519,7 @@ var DataCube = function () {
 			return arr8[0] === 255;
 		}
 	}, {
-		key: "getRenderMaskSet",
+		key: 'getRenderMaskSet',
 		value: function getRenderMaskSet() {
 			var bitmasks = {
 				true: { // little endian, most architectures
@@ -530,7 +539,7 @@ var DataCube = function () {
 			return bitmasks[this.isLittleEndian()];
 		}
 	}, {
-		key: "arrayType",
+		key: 'arrayType',
 		value: function arrayType() {
 			var choices = {
 				1: Uint8ClampedArray,
