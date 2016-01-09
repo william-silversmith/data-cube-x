@@ -185,29 +185,6 @@ class DataCube {
 
 	/* insertSquare
 	 * 
-	 * Insert an XYZ aligned cube of data.
-	 */
-	insertCube (subcube, offsetx = 0, offsety = 0, offsetz = 0) {
-		let _this = this;
-
-		// const xsize = _this.size.x,
-		// 	ysize = _this.size.y,
-		// 	zsize = _this.size.z;
-
-		// offsetz *= xsize * ysize;
-
-		// for (let i = 0; i < square.length; i++) {
-		// 	let x = offsetx + (i % xsize),
-		// 		y = offsety + (Math.floor(i / xsize));
-
-		// 	_this.cube[x + xsize * y + offsetz] = square[i];
-		// }
-
-		_this.clean = false;
-	}
-
-	/* insertSquare
-	 * 
 	 * Insert an XY aligned plane of data into the cube.
 	 *
 	 * Square is a 1D array representing a 2D plane.
