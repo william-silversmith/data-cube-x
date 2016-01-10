@@ -385,7 +385,7 @@ class DataCube {
 
 	// see https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
 	// returns a data buffer suited to setting the canvas
-	renderImageSlice (context, axis, index) {
+	imageSlice (axis, index) {
 		let _this = this;
 
 		let square = this.slice(axis, index);
@@ -398,7 +398,7 @@ class DataCube {
 
 		let size = sizes[axis];
 
-		let imgdata = context.createImageData(size[0], size[1]);
+		let imgdata = this.canvas_context.createImageData(size[0], size[1]);
 
 		let maskset = this.getRenderMaskSet();
 
@@ -430,10 +430,10 @@ class DataCube {
 			di -= 4;
 		}
 
-		context.putImageData(imgdata, 0, 0);
+		return imgdata;
 	}
 
-	renderGrayImageSlice (context, axis, index) {
+	grayImageSlice (axis, index) {
 		let _this = this;
 
 		let square = this.slice(axis, index);
@@ -446,7 +446,7 @@ class DataCube {
 
 		let size = sizes[axis];
 
-		let imgdata = context.createImageData(size[0], size[1]);
+		let imgdata = this.canvas_context.createImageData(size[0], size[1]);
 
 		let maskset = this.getRenderMaskSet();
 
@@ -463,6 +463,16 @@ class DataCube {
 			di -= 4;
 		}
 
+		return imgdata;
+	}
+
+	renderImageSlice (context, axis, index) {
+		var imgdata = this.imageSlice(axis, index);
+		context.putImageData(imgdata, 0, 0);
+	}
+
+	renderGrayImageSlice (context, axis, index) {
+		var imgdata = this.grayImageSlice(axis, index);
 		context.putImageData(imgdata, 0, 0);
 	}
 

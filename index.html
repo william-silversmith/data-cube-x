@@ -2,6 +2,7 @@
 	<head>
 		<title>EXPERIMENTAL - Datacube Render Test | Eyewire</title>
 		<script src="./jquery-2.2.0.min.js"></script>
+		<script src="./FileSaver.js"></script>
 		<script src="./datacube.js"></script>
 
 		<style>
@@ -11,6 +12,10 @@
 
 			canvas {
 				border: 1px dotted blue;
+			}
+
+			img {
+				margin: 1px;
 			}
 		</style>
 
@@ -67,6 +72,30 @@
 				render();
 			});
 
+			function saveStack () {
+				var canvas = document.createElement('canvas');
+				canvas.width = 256;
+				canvas.height = 256;
+				var ctx = canvas.getContext('2d');
+
+				function genimg (i) {
+					if (i >= 256) {
+						return;
+					}
+
+					var cimg = new Image(256, 256);
+					//var simg = new Image(256, 256);
+					vol.segmentation.renderImageSlice(ctx, 'z', i);
+
+					canvas.toBlob(function (blob) {
+					  saveAs(blob, i + ".png");
+					  genimg(i+1);
+					});
+				}
+
+				genimg(0);
+			}
+
 			function render () {
 				// _needsrender = true;
 				hardRender();
@@ -109,5 +138,7 @@
 		SEGMENTATION<br>
 		<canvas id="segmentation" width="256" height="256"></canvas>
 		<p>LOADING: <span id="loading"></span></p>
+
+		<div id="images"></div>
 	</body>
 </html>
