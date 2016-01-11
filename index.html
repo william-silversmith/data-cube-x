@@ -52,6 +52,15 @@
 						render();
 					}, 250);
 				});
+
+
+				var clip_id = Math.round((Math.random() * 3) + 1); // 1, 2, 3, 4
+				var clip = new Audio("./audio/datacube" + clip_id + ".ogg");
+				clip.preload = true;
+
+				$(clip).one('canplaythrough', function () {
+					clip.play();
+				});
 			});
 
 			$(document).on('wheel', function (e) {
