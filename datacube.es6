@@ -27,7 +27,8 @@ class Volume {
 
 		this.requests = [];
 
-		let channel_promise = this.loadVolume(this.channel_id, this.channel);
+		// let channel_promise = this.loadVolume(this.channel_id, this.channel);
+		let channel_promise = this.loadMovieVolume('./channel/channel.webm', this.channel);
 		let seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
 
 		return $.when(channel_promise, seg_promise).always(function () {
@@ -89,6 +90,103 @@ class Volume {
 		return $.Deferred().resolve().done(function () { // test code
 			cube.loaded = true;
 		});
+	}
+
+
+	loadMovieVolume (url, cube) {
+		// 8 * 4 chunks + 4 single tiles per channel
+		let _this = this;
+
+		let video = $('<video>')[0];
+		video.src = url;
+		video.width = cube.size.x;
+		video.height = cube.size.y;
+		video.id = 'v';
+
+		$('body').append(video);
+		$(video).css({
+			position: 'absolute',
+			right: "10px",
+			top: "10px",
+		})
+
+		let canvas = document.createElement('canvas');
+
+		let frame = 0;
+
+		// video.addEventListener('loadeddata', function() {
+		// 	canvas.width = video.width;
+		// 	canvas.height = video.height;
+
+		// 	video.currentTime = 0;
+
+		// 	let frame_duration = video.duration / cube.size.z * 1000; // msec
+
+		// 	video.playbackRate = 1;
+		// 	frame_duration /= video.playbackRate;
+
+		// 	let captureloop;
+
+		// 	let start = window.performance.now();
+
+		// 	let framesinserted = {};
+
+		// 	function playcapture (fn) {
+		// 		fn = fn || function () {};
+		// 		requestAnimationFrame(function loop () {
+		// 			let frame = Math.floor((performance.now() - start) / frame_duration);
+
+		// 			if (!framesinserted[frame]) {
+		// 				captureFrame(video, frame);
+		// 				framesinserted[frame] = true;
+		// 			}
+
+		// 			if (frame < cube.size.z) {
+		// 				requestAnimationFrame(loop);
+		// 			}
+		// 			else {
+		// 				fn();
+		// 			}
+		// 		});
+
+		// 		video.play();
+		// 	}
+
+		// 	playcapture(function () {
+		// 		console.log("wow")
+		// 		video.currentTime = 0;
+		// 		playcapture();
+		// 	})
+		// });
+
+		video.addEventListener('loadeddata', function() {
+			canvas.width = video.width;
+			canvas.height = video.height;
+
+			video.currentTime = 0;
+		});
+
+		video.addEventListener('seeked', function () {
+			if (frame >= cube.size.z) {
+				return;
+			}
+
+			captureFrame(video, frame);
+
+			frame++;
+
+			var sec = (frame / cube.size.z) * video.duration;
+			video.currentTime = sec;
+		});
+
+		function captureFrame (video, z) {
+			let ctx = canvas.getContext('2d');
+			ctx.drawImage(video, 0, 0, video.width, video.height);
+			cube.insertCanvas(canvas, 0, 0, z);
+			$('#captures').text(z + 1);
+		}
+
+		return $.Deferred().resolve();
 	}
 
 	loadVolume (vid, cube) {
@@ -243,16 +341,22 @@ class DataCube {
 		_this.clean = false;
 	}
 
+	insertCanvas (canvas, offsetx = 0, offsety = 0, offsetz = 0) {
+		let ctx = canvas.getContext('2d');
+		let imgdata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		this.insertImageData(imgdata, canvas.width, offsetx, offsety, offsetz);
+	}
+
 	insertImage (img, offsetx = 0, offsety = 0, offsetz = 0) {
+		this.canvas_context.drawImage(img, 0, 0);
+		let imgdata = this.canvas_context.getImageData(0, 0, img.width, img.height);
+		this.insertImageData(imgdata, img.width, offsetx, offsety, offsetz);
+	}
+
+	insertImageData (imgdata, width, offsetx, offsety, offsetz) {
 		let _this = this;
 
-		//console.log(offsetx, offsety, offsetz)
-
-		this.canvas_context.drawImage(img, 0, 0);
-		// this.canvas_context.fillStyle = 'rgba(128, 0, 0, 255)';
-		// this.canvas_context.fillRect(0, 0, img.width, img.height);
-
-		let pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
+		let pixels = imgdata.data; // Uint8ClampedArray
 		let data32 = new Uint32Array(pixels.buffer); // creates a view, not an array
 
 		// Note: on little endian machine, data32 is 0xaabbggrr, so it's already flipped
@@ -271,7 +375,6 @@ class DataCube {
 		let x, y, color;
 		
 		const sizex = _this.size.x,
-			  width = img.width,
 			  zadj = offsetz * _this.size.x * _this.size.y;
 
 		if (this.isLittleEndian()) {

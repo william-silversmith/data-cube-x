@@ -36,7 +36,8 @@ var Volume = function () {
 
 			this.requests = [];
 
-			var channel_promise = this.loadVolume(this.channel_id, this.channel);
+			// let channel_promise = this.loadVolume(this.channel_id, this.channel);
+			var channel_promise = this.loadMovieVolume('./channel/channel.webm', this.channel);
 			var seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
 
 			return $.when(channel_promise, seg_promise).always(function () {
@@ -103,6 +104,103 @@ var Volume = function () {
 				// test code
 				cube.loaded = true;
 			});
+		}
+	}, {
+		key: 'loadMovieVolume',
+		value: function loadMovieVolume(url, cube) {
+			// 8 * 4 chunks + 4 single tiles per channel
+			var _this = this;
+
+			var video = $('<video>')[0];
+			video.src = url;
+			video.width = cube.size.x;
+			video.height = cube.size.y;
+			video.id = 'v';
+
+			$('body').append(video);
+			$(video).css({
+				position: 'absolute',
+				right: "10px",
+				top: "10px"
+			});
+
+			var canvas = document.createElement('canvas');
+
+			var frame = 0;
+
+			// video.addEventListener('loadeddata', function() {
+			// 	canvas.width = video.width;
+			// 	canvas.height = video.height;
+
+			// 	video.currentTime = 0;
+
+			// 	let frame_duration = video.duration / cube.size.z * 1000; // msec
+
+			// 	video.playbackRate = 1;
+			// 	frame_duration /= video.playbackRate;
+
+			// 	let captureloop;
+
+			// 	let start = window.performance.now();
+
+			// 	let framesinserted = {};
+
+			// 	function playcapture (fn) {
+			// 		fn = fn || function () {};
+			// 		requestAnimationFrame(function loop () {
+			// 			let frame = Math.floor((performance.now() - start) / frame_duration);
+
+			// 			if (!framesinserted[frame]) {
+			// 				captureFrame(video, frame);
+			// 				framesinserted[frame] = true;
+			// 			}
+
+			// 			if (frame < cube.size.z) {
+			// 				requestAnimationFrame(loop);
+			// 			}
+			// 			else {
+			// 				fn();
+			// 			}
+			// 		});
+
+			// 		video.play();
+			// 	}
+
+			// 	playcapture(function () {
+			// 		console.log("wow")
+			// 		video.currentTime = 0;
+			// 		playcapture();
+			// 	})
+			// });
+
+			video.addEventListener('loadeddata', function () {
+				canvas.width = video.width;
+				canvas.height = video.height;
+
+				video.currentTime = 0;
+			});
+
+			video.addEventListener('seeked', function () {
+				if (frame >= cube.size.z) {
+					return;
+				}
+
+				captureFrame(video, frame);
+
+				frame++;
+
+				var sec = frame / cube.size.z * video.duration;
+				video.currentTime = sec;
+			});
+
+			function captureFrame(video, z) {
+				var ctx = canvas.getContext('2d');
+				ctx.drawImage(video, 0, 0, video.width, video.height);
+				cube.insertCanvas(canvas, 0, 0, z);
+				$('#captures').text(z + 1);
+			}
+
+			return $.Deferred().resolve();
 		}
 	}, {
 		key: 'loadVolume',
@@ -273,21 +371,33 @@ var DataCube = function () {
 			_this.clean = false;
 		}
 	}, {
+		key: 'insertCanvas',
+		value: function insertCanvas(canvas) {
+			var offsetx = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
+			var offsety = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
+			var offsetz = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
+
+			var ctx = canvas.getContext('2d');
+			var imgdata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			this.insertImageData(imgdata, canvas.width, offsetx, offsety, offsetz);
+		}
+	}, {
 		key: 'insertImage',
 		value: function insertImage(img) {
 			var offsetx = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 			var offsety = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
 			var offsetz = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
 
+			this.canvas_context.drawImage(img, 0, 0);
+			var imgdata = this.canvas_context.getImageData(0, 0, img.width, img.height);
+			this.insertImageData(imgdata, img.width, offsetx, offsety, offsetz);
+		}
+	}, {
+		key: 'insertImageData',
+		value: function insertImageData(imgdata, width, offsetx, offsety, offsetz) {
 			var _this = this;
 
-			//console.log(offsetx, offsety, offsetz)
-
-			this.canvas_context.drawImage(img, 0, 0);
-			// this.canvas_context.fillStyle = 'rgba(128, 0, 0, 255)';
-			// this.canvas_context.fillRect(0, 0, img.width, img.height);
-
-			var pixels = this.canvas_context.getImageData(0, 0, img.width, img.height).data; // Uint8ClampedArray
+			var pixels = imgdata.data; // Uint8ClampedArray
 			var data32 = new Uint32Array(pixels.buffer); // creates a view, not an array
 
 			// Note: on little endian machine, data32 is 0xaabbggrr, so it's already flipped
@@ -308,7 +418,6 @@ var DataCube = function () {
 			    color = undefined;
 
 			var sizex = _this.size.x,
-			    width = img.width,
 			    zadj = offsetz * _this.size.x * _this.size.y;
 
 			if (this.isLittleEndian()) {
