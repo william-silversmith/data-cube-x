@@ -425,8 +425,8 @@ var DataCube = function () {
 		// returns a data buffer suited to setting the canvas
 
 	}, {
-		key: 'renderImageSlice',
-		value: function renderImageSlice(context, axis, index) {
+		key: 'imageSlice',
+		value: function imageSlice(axis, index) {
 			var _this = this;
 
 			var square = this.slice(axis, index);
@@ -439,7 +439,7 @@ var DataCube = function () {
 
 			var size = sizes[axis];
 
-			var imgdata = context.createImageData(size[0], size[1]);
+			var imgdata = this.canvas_context.createImageData(size[0], size[1]);
 
 			var maskset = this.getRenderMaskSet();
 
@@ -470,11 +470,11 @@ var DataCube = function () {
 				di -= 4;
 			}
 
-			context.putImageData(imgdata, 0, 0);
+			return imgdata;
 		}
 	}, {
-		key: 'renderGrayImageSlice',
-		value: function renderGrayImageSlice(context, axis, index) {
+		key: 'grayImageSlice',
+		value: function grayImageSlice(axis, index) {
 			var _this = this;
 
 			var square = this.slice(axis, index);
@@ -487,7 +487,7 @@ var DataCube = function () {
 
 			var size = sizes[axis];
 
-			var imgdata = context.createImageData(size[0], size[1]);
+			var imgdata = this.canvas_context.createImageData(size[0], size[1]);
 
 			var maskset = this.getRenderMaskSet();
 
@@ -504,6 +504,18 @@ var DataCube = function () {
 				di -= 4;
 			}
 
+			return imgdata;
+		}
+	}, {
+		key: 'renderImageSlice',
+		value: function renderImageSlice(context, axis, index) {
+			var imgdata = this.imageSlice(axis, index);
+			context.putImageData(imgdata, 0, 0);
+		}
+	}, {
+		key: 'renderGrayImageSlice',
+		value: function renderGrayImageSlice(context, axis, index) {
+			var imgdata = this.grayImageSlice(axis, index);
 			context.putImageData(imgdata, 0, 0);
 		}
 
