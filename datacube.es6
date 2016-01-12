@@ -594,6 +594,9 @@ class DataCube {
 
 		let square = buffer || (new ArrayType(this.size[face[0]] * this.size[face[1]]));
 
+		// Note: order of loops is important for efficient memory access
+		// and correct orientation of images. Consecutive x access is most efficient.
+
 		let i = square.length - 1;
 		if (axis === 'x') {
 			for (let y = ysize - 1; y >= 0; --y) {
@@ -604,9 +607,11 @@ class DataCube {
 			}
 		}
 		else if (axis === 'y') {
+			// possible to make this more efficient with an array memcpy
+			// as 256 x are consecutive, but no memcpy in browser.
 			const yoffset = xsize * index;
-			for (let x = xsize - 1; x >= 0; --x) {
-				for (let z = zsize - 1; z >= 0; --z) {
+			for (let z = zsize - 1; z >= 0; --z) {
+				for (let x = xsize - 1; x >= 0; --x) { 
 					square[i] = _this.cube[x + yoffset + xysize * z];
 					--i;
 				}
@@ -614,8 +619,8 @@ class DataCube {
 		}
 		else if (axis === 'z') { 
 			const zoffset = xysize * index;
-			for (let x = xsize - 1; x >= 0; --x) {
-				for (let y = ysize - 1; y >= 0; --y) {
+			for (let y = ysize - 1; y >= 0; --y) {
+				for (let x = xsize - 1; x >= 0; --x) {
 					square[i] = _this.cube[x + xsize * y + zoffset];
 					--i;
 				}
