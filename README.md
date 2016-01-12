@@ -14,8 +14,7 @@ The datacube consists of two objects, one, Volume, directly relevant to Eyewire,
     // let channelctx and segctx represent some canvas contexts for channel and segmentation
 
 	var vol = new Volume({ 
-		channel_id: 2988, 
-		segmentation_id: 15656, 
+		task_id: 332,
 		channel: new DataCube({ bytes: 1 }), 
 		segmentation: new DataCube({ bytes: 2 }), 
 	});
@@ -24,6 +23,22 @@ The datacube consists of two objects, one, Volume, directly relevant to Eyewire,
 		vol.channel.renderGrayImageSlice(channelctx, 'x', 0); // these should be synchronized
 		vol.segmentation.renderImageSlice(segctx, 'x', 0); 
 	})
+
+You can also access the cube data as squares -- planes that cut through the cube on an axis:
+
+	vol.channel.slice('x', 52) => 1D array of 8 bit values, arranged as x,y,z
+	vol.segmentation.slice('z', 156) => 1D array of 16 bit values, arranged as x,y,z
+
+You can grab single values:
+
+	vol.channel.get(35, 12, 0) => Single integer value at x=35, y=12, z=0
+
+...or if you really need to, you can access the cube directly:
+
+	vol.channel.cube => 1D array representing the whole 3D cube
+
+vol.size.x, vol.size.y, vol.size.z gives you the parameters neceessary to work with that
+
 
 
 
