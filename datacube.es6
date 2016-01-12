@@ -7,8 +7,7 @@
  * and segmentation (AI determined supervoxels)
  *
  * Required:
- *   channel_id: (int) The volume id representing the channel for a task in Eyewire
- *   segmentation_id: (int) The volume id representing the segmentation for a task in Eyewire
+ *   task_id: (int) The task id representing a task in Eyewire
  *   channel: A blankable Datacube representing the channel values. 
  *        Since they're grayscale, an efficient representation is 1 byte
  *   segmentation: A blankable Datacube representing segmentation values.
@@ -18,8 +17,7 @@
  */
 class Volume {
 	constructor (args) {
-		this.channel_id = args.channel_id; // volume id as corresponding to the data server
-		this.segmentation_id = args.segmentation_id; 
+		this.task_id = args.task_id;
 
 		this.channel = args.channel; // a data cube
 		this.segmentation = args.segmentation; // a segmentation cube
@@ -47,13 +45,30 @@ class Volume {
 
 		this.requests = [];
 
-		let channel_promise = this.loadVolume(this.channel_id, this.channel);
-		//let channel_promise = this.loadMovieVolume('./channel/channel.webm', this.channel);
-		let seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
+		let deferred = $.Deferred();
 
-		return $.when(channel_promise, seg_promise).always(function () {
-			_this.requests = [];
-		});
+		$.getJSON("http://eyewire.org/1.0/task/" + this.task_id + "/volumes")
+			.done(function (task) {
+				let channel_promise = _this.loadVolume(task.channel_id, _this.channel);
+				//let channel_promise = _this.loadMovieVolume('./channel/channel.webm', _this.channel);
+				let seg_promise = _this.loadVolume(task.segmentation_id, _this.segmentation);
+
+				$.when(channel_promise, seg_promise)
+					.done(function () {
+						deferred.resolve();
+					})
+					.fail(function () {
+						deferred.reject();
+					})
+					.always(function () {
+						_this.requests = [];
+					});
+			})
+			.fail(function () {
+				deferred.reject();
+			});
+
+		return deferred;
 	}
 
 	/* loadingProgress

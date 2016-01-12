@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -11,8 +11,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * and segmentation (AI determined supervoxels)
  *
  * Required:
- *   channel_id: (int) The volume id representing the channel for a task in Eyewire
- *   segmentation_id: (int) The volume id representing the segmentation for a task in Eyewire
+ *   task_id: (int) The task id representing a task in Eyewire
  *   channel: A blankable Datacube representing the channel values. 
  *        Since they're grayscale, an efficient representation is 1 byte
  *   segmentation: A blankable Datacube representing segmentation values.
@@ -25,8 +24,7 @@ var Volume = function () {
 	function Volume(args) {
 		_classCallCheck(this, Volume);
 
-		this.channel_id = args.channel_id; // volume id as corresponding to the data server
-		this.segmentation_id = args.segmentation_id;
+		this.task_id = args.task_id;
 
 		this.channel = args.channel; // a data cube
 		this.segmentation = args.segmentation; // a segmentation cube
@@ -43,7 +41,7 @@ var Volume = function () {
   */
 
 	_createClass(Volume, [{
-		key: 'load',
+		key: "load",
 		value: function load() {
 			var _this = this;
 
@@ -57,13 +55,25 @@ var Volume = function () {
 
 			this.requests = [];
 
-			var channel_promise = this.loadVolume(this.channel_id, this.channel);
-			//let channel_promise = this.loadMovieVolume('./channel/channel.webm', this.channel);
-			var seg_promise = this.loadVolume(this.segmentation_id, this.segmentation);
+			var deferred = $.Deferred();
 
-			return $.when(channel_promise, seg_promise).always(function () {
-				_this.requests = [];
+			$.getJSON("http://eyewire.org/1.0/task/" + this.task_id + "/volumes").done(function (task) {
+				var channel_promise = _this.loadVolume(task.channel_id, _this.channel);
+				//let channel_promise = _this.loadMovieVolume('./channel/channel.webm', _this.channel);
+				var seg_promise = _this.loadVolume(task.segmentation_id, _this.segmentation);
+
+				$.when(channel_promise, seg_promise).done(function () {
+					deferred.resolve();
+				}).fail(function () {
+					deferred.reject();
+				}).always(function () {
+					_this.requests = [];
+				});
+			}).fail(function () {
+				deferred.reject();
 			});
+
+			return deferred;
 		}
 
 		/* loadingProgress
@@ -74,7 +84,7 @@ var Volume = function () {
    */
 
 	}, {
-		key: 'loadingProgress',
+		key: "loadingProgress",
 		value: function loadingProgress() {
 			if (this.segmentation.loaded && this.channel.loaded) {
 				return 1;
@@ -100,7 +110,7 @@ var Volume = function () {
    */
 
 	}, {
-		key: 'abort',
+		key: "abort",
 		value: function abort() {
 			this.requests.forEach(function (jqxhr) {
 				jqxhr.abort();
@@ -110,7 +120,7 @@ var Volume = function () {
 		// used for testing correctness of pixel values loaded into data cube
 
 	}, {
-		key: 'fakeLoad',
+		key: "fakeLoad",
 		value: function fakeLoad() {
 			if (!this.channel.clean) {
 				this.channel.clear();
@@ -129,7 +139,7 @@ var Volume = function () {
 		// used for testing correctness of pixel values loaded into data cube
 
 	}, {
-		key: 'fakeLoadVolume',
+		key: "fakeLoadVolume",
 		value: function fakeLoadVolume(vid, cube) {
 			// 8 * 4 chunks + 4 single tiles per channel
 			var _this = this;
@@ -163,7 +173,7 @@ var Volume = function () {
    */
 
 	}, {
-		key: 'loadMovieVolume',
+		key: "loadMovieVolume",
 		value: function loadMovieVolume(url, cube) {
 			// 8 * 4 chunks + 4 single tiles per channel
 			var _this = this;
@@ -234,7 +244,7 @@ var Volume = function () {
    */
 
 	}, {
-		key: 'loadVolume',
+		key: "loadVolume",
 		value: function loadVolume(vid, cube) {
 			// 8 * 4 chunks + 4 single tiles per channel
 			var _this = this;
@@ -317,7 +327,7 @@ var Volume = function () {
    */
 
 	}, {
-		key: 'generateUrls',
+		key: "generateUrls",
 		value: function generateUrls(vid) {
 			var _this = this;
 
@@ -385,7 +395,7 @@ var DataCube = function () {
 	// for internal use, makes a canvas for blitting images to
 
 	_createClass(DataCube, [{
-		key: 'createImageContext',
+		key: "createImageContext",
 		value: function createImageContext() {
 			var canvas = document.createElement('canvas');
 			canvas.width = this.size.x;
@@ -397,7 +407,7 @@ var DataCube = function () {
 		// for internal use, creates the data cube of the correct data type and size
 
 	}, {
-		key: 'materialize',
+		key: "materialize",
 		value: function materialize() {
 			var ArrayType = this.arrayType();
 
@@ -416,7 +426,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'clear',
+		key: "clear",
 		value: function clear() {
 			this.cube.fill(0);
 			this.clean = true;
@@ -443,7 +453,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'insertSquare',
+		key: "insertSquare",
 		value: function insertSquare(square, width) {
 			var offsetx = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
 			var offsety = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
@@ -483,7 +493,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'insertCanvas',
+		key: "insertCanvas",
 		value: function insertCanvas(canvas) {
 			var offsetx = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 			var offsety = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
@@ -508,7 +518,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'insertImage',
+		key: "insertImage",
 		value: function insertImage(img) {
 			var offsetx = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 			var offsety = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
@@ -534,7 +544,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'insertImageData',
+		key: "insertImageData",
 		value: function insertImageData(imgdata, width, offsetx, offsety, offsetz) {
 			var _this = this;
 
@@ -612,7 +622,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'get',
+		key: "get",
 		value: function get(x, y, z) {
 			return this.cube[x + this.size.x * y + this.size.x * this.size.y * z];
 		}
@@ -635,7 +645,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'slice',
+		key: "slice",
 		value: function slice(axis, index) {
 			var buffer = arguments.length <= 2 || arguments[2] === undefined ? null : arguments[2];
 
@@ -714,7 +724,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'imageSlice',
+		key: "imageSlice",
 		value: function imageSlice(axis, index) {
 			var _this = this;
 
@@ -776,7 +786,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'grayImageSlice',
+		key: "grayImageSlice",
 		value: function grayImageSlice(axis, index) {
 			var _this = this;
 
@@ -824,7 +834,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'renderImageSlice',
+		key: "renderImageSlice",
 		value: function renderImageSlice(context, axis, index) {
 			var imgdata = this.imageSlice(axis, index);
 			context.putImageData(imgdata, 0, 0);
@@ -845,7 +855,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'renderGrayImageSlice',
+		key: "renderGrayImageSlice",
 		value: function renderGrayImageSlice(context, axis, index) {
 			var imgdata = this.grayImageSlice(axis, index);
 			context.putImageData(imgdata, 0, 0);
@@ -855,7 +865,7 @@ var DataCube = function () {
 		// http://stackoverflow.com/questions/504030/javascript-endian-encoding
 
 	}, {
-		key: 'isLittleEndian',
+		key: "isLittleEndian",
 		value: function isLittleEndian() {
 			var arr32 = new Uint32Array(1);
 			var arr8 = new Uint8Array(arr32.buffer);
@@ -868,7 +878,7 @@ var DataCube = function () {
 		// depending on CPU endianess.
 
 	}, {
-		key: 'getRenderMaskSet',
+		key: "getRenderMaskSet",
 		value: function getRenderMaskSet() {
 			var bitmasks = {
 				true: { // little endian, most architectures
@@ -899,7 +909,7 @@ var DataCube = function () {
    */
 
 	}, {
-		key: 'arrayType',
+		key: "arrayType",
 		value: function arrayType() {
 			var choices = {
 				1: Uint8ClampedArray,
