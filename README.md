@@ -11,19 +11,19 @@ Requires jQuery.
 
 The datacube consists of two objects, one, Volume, directly relevant to Eyewire, the other, Datacube, is generally useful for representing 3D images.
 
-// let channelctx and segctx represent 
+    // let channelctx and segctx represent some canvas contexts for channel and segmentation
 
-var vol = new Volume({ 
-	channel_id: 2988, 
-	segmentation_id: 15656, 
-	channel: new DataCube({ bytes: 1 }), 
-	segmentation: new DataCube({ bytes: 2 }), 
-});
+	var vol = new Volume({ 
+		channel_id: 2988, 
+		segmentation_id: 15656, 
+		channel: new DataCube({ bytes: 1 }), 
+		segmentation: new DataCube({ bytes: 2 }), 
+	});
 
-vol.load().done(function () {
-	vol.channel.renderGrayImageSlice(channelctx, AXIS, SLICE);
-	vol.segmentation.renderImageSlice(segctx, AXIS, SLICE);
-})
+	vol.load().done(function () {
+		vol.channel.renderGrayImageSlice(channelctx, 'x', 0); // these should be synchronized
+		vol.segmentation.renderImageSlice(segctx, 'x', 0); 
+	})
 
 
 
