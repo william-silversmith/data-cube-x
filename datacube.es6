@@ -90,7 +90,7 @@ class Volume {
 
 		let specs = this.generateUrls();
 
-		let resolved = this.requests.filter(req => req.state() === 'resolved');
+		let resolved = this.requests.filter(req => req.state() !== 'pending');
 		return resolved.length / (2 * specs.length);
 	}
 
@@ -241,19 +241,25 @@ class Volume {
 				});
 			}
 
-			let jqxhr = $.getJSON(spec.url)
+			let getreq = $.getJSON(spec.url)
 				.done(decodeAndInsertImages)
-				.fail(function () { // If it fails, one retry.
+				.fail(function (jqxhr, statusText, error) { // If it fails, one retry.
+					if (statusText === 'abort') {
+						return;
+					}
+
 					setTimeout(function () {
-						$.getJSON(spec.url)
+						let getreq2 = $.getJSON(spec.url)
 							.done(decodeAndInsertImages)
 							.fail(function () {
 								console.error(spec.url + ' failed to load.');
 							});
+
+						_this.requests.push(getreq2);
 					}, 1000);
 				})
 
-			requests.push(jqxhr);
+			requests.push(getreq);
 		})
 
 		this.requests.push.apply(this.requests, requests);

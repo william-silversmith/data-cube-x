@@ -97,7 +97,7 @@ var Volume = function () {
 			var specs = this.generateUrls();
 
 			var resolved = this.requests.filter(function (req) {
-				return req.state() === 'resolved';
+				return req.state() !== 'pending';
 			});
 			return resolved.length / (2 * specs.length);
 		}
@@ -265,16 +265,22 @@ var Volume = function () {
 					});
 				}
 
-				var jqxhr = $.getJSON(spec.url).done(decodeAndInsertImages).fail(function () {
+				var getreq = $.getJSON(spec.url).done(decodeAndInsertImages).fail(function (jqxhr, statusText, error) {
 					// If it fails, one retry.
+					if (statusText === 'abort') {
+						return;
+					}
+
 					setTimeout(function () {
-						$.getJSON(spec.url).done(decodeAndInsertImages).fail(function () {
+						var getreq2 = $.getJSON(spec.url).done(decodeAndInsertImages).fail(function () {
 							console.error(spec.url + ' failed to load.');
 						});
+
+						_this.requests.push(getreq2);
 					}, 1000);
 				});
 
-				requests.push(jqxhr);
+				requests.push(getreq);
 			});
 
 			this.requests.push.apply(this.requests, requests);
