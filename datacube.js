@@ -412,8 +412,6 @@ var Volume = function () {
 			var color = [0, 0, 255];
 			var alpha = 0.25;
 
-			var mask = 0x00ffffff;
-
 			// exploting the fact that we know that there are
 			// no black pixels in our channel images and that they're gray
 			for (var i = slice32.length - 1; i >= 0; i--) {
