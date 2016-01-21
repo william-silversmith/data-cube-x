@@ -60,6 +60,14 @@
 				$(clip).one('canplaythrough', function () {
 					clip.play();
 				});
+			
+				$('#channel').on('click', function (e) {
+					var x = e.offsetX / $(this).innerWidth(), 
+						y = e.offsetY / $(this).innerHeight();
+
+					vol.selectSegment(AXIS, SLICE, x, y);
+					render();
+				});
 			});
 
 			$(document).on('wheel', function (e) {
