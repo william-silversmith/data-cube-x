@@ -22,6 +22,9 @@ class Volume {
 		this.channel = args.channel; // a data cube
 		this.segmentation = args.segmentation; // a segmentation cube
 
+		this.CHUNK_SIZE = 128; // Fixed in e2198
+		this.BUNDLE_SIZE = args.bundle_size || 64; // 128 = ~260kB, but fastest overall
+
 		this.requests = [];
 	}
 
@@ -315,8 +318,8 @@ class Volume {
 
 		let specs = [];
 
-		let CHUNK_SIZE = 128,
-			BUNDLE_SIZE = 64; // results in ~130kb downloads per request
+		let CHUNK_SIZE = _this.CHUNK_SIZE,
+			BUNDLE_SIZE = _this.BUNDLE_SIZE; // results in ~130kb downloads per request
 
 		for (let x = 0; x <= 1; x++) {
 			for (let y = 0; y <= 1; y++) {
