@@ -5,7 +5,11 @@ Demonstrates the power and efficiency of materializing downloaded images into a 
 enabling slicing in xy, xz, and zy without downloading extra data and providing a sensible
 architecture for accessing cube information.
 
-Requires jQuery.
+Requires jQuery and gulp.
+
+# Setup
+
+Run gulp without arguments in the directory, you can now access the index.html page.
 
 # Example Usage
 
@@ -19,9 +23,18 @@ The datacube consists of two objects, one, Volume, directly relevant to Eyewire,
 		segmentation: new DataCube({ bytes: 2 }), 
 	});
 
+	// Direct cube access version
+
 	vol.load().done(function () {
 		vol.channel.renderGrayImageSlice(channelctx, 'x', 0); // these should be synchronized
 		vol.segmentation.renderImageSlice(segctx, 'x', 0); 
+	})
+
+	// Checkerboard version
+
+	vol.load().done(function () {
+		vol.renderChannelImage(channelctx, 'x', 0); // these should be synchronized
+		vol.renderSegmentationImage(segctx, 'x', 0); 
 	})
 
 You can also access the cube data as squares -- planes that cut through the cube on an axis:

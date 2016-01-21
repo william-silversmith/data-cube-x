@@ -347,7 +347,20 @@ class Volume {
 		return specs;
 	}
 
-	renderChannelSlice(ctx, axis, slice) {
+	/* renderChannelSlice
+	 *
+	 * Render the channel image to the given canvas context.
+	 * Advantage over direct data cube access is the use of a
+	 * background loading image.
+	 *
+	 * Required:
+	 *   [0] ctx
+	 *   [1] axis: 'x', 'y', or 'z'
+	 *   [2] slice: 0 - 255
+	 *
+	 * Return: segid, w/ side effect of drawing on ctx
+	 */
+	renderChannelSlice (ctx, axis, slice) {
 		let _this = this;
 
 		ctx.drawImage(_loadingimg, 0, 0);
@@ -389,15 +402,45 @@ class Volume {
 		}
 
 		ctx.putImageData(pixels, 0, 0);
+
+		return this;
 	}
 
+	/* renderSegmentationSlice
+	 *
+	 * Convenience method for rendering a segmentation image.
+	 * This is mostly used for testing, and this method mainly exists
+	 * for consistency of API.
+	 *
+	 * Required:
+	 *   [0] ctx
+	 *   [1] axis: 'x', 'y', or 'z'
+	 *   [2] slice: 0 - 255
+	 *
+	 * Return: this, side effect of drawing on ctx
+	 */
 	renderSegmentationSlice(ctx, axis, slice) {
 		// Don't need to do anything special for segmentation since it's
 		// not user visible. Also, in the old version, the default image was black,
 		// but the cube is zeroed out by default.
 		this.segmentation.renderImageSlice(ctx, axis, slice);
+
+		return this;
 	}
 
+	/* selectSegment
+	 *
+	 * Given an axis, slice index, and normalized x and y cursor coordinates
+	 * ([0, 1]), 0,0 being the top left, select the segment under the mouse.
+	 *
+	 * Required:
+	 *   [0] axis: 'x', 'y', or 'z'
+	 *   [1] slice: 0 - 255
+	 *   [2] normx: 0...1
+	 *   [3] normy: 0...1
+	 *
+	 * Return: segid
+	 */
 	selectSegment (axis, slice, normx, normy) {
 		let _this = this;
 		let x,y,z;
@@ -426,6 +469,8 @@ class Volume {
 		if (segid > 0) {
 			_this.segments[segid] = true;
 		}
+
+		return segid;
 	}
 }
 
