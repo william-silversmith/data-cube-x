@@ -23,6 +23,8 @@ class Volume {
 		this.channel = args.channel; // a data cube
 		this.segmentation = args.segmentation; // a segmentation cube
 
+		this.segments = {};
+
 		this.CHUNK_SIZE = 128; // Fixed in e2198
 		this.BUNDLE_SIZE = args.bundle_size || 64; // 128 = ~260kB, but fastest overall
 
@@ -359,13 +361,31 @@ class Volume {
 		let pixels = _this.channel.grayImageSlice(axis, slice);
 		let slice32 = new Uint32Array(pixels.data.buffer); // creates a view, not an array
 
+		let segmentation = _this.segmentation.slice(axis, slice);
+
+		let x, y, segid;
+
+		const color = [ 0, 0, 255 ];
+		const alpha = 0.25;
+
+		let mask = 0x00ffffff;
+
 		// exploting the fact that we know that there are 
 		// no black pixels in our channel images and that they're gray
 		for (let i = slice32.length - 1; i >= 0; i--) {
+			segid = segmentation[i];
+
 			// 00ffff00 b/c green and blue can be swapped on big/little endian
 			// but it doesn't matter like red and alpha. Just need to test for non
 			// black pixels. The logical ands and ors are to avoid a branch.
 			slice32[i] = ((slice32[i] & 0x00ffff00) && slice32[i]) || loading32[i];
+
+			// overlayColor[i] + buffer[startIndex + i] * (1 - alpha);
+			if (_this.segments[segid]) {
+				pixels.data[i * 4 + 0] = Math.floor((pixels.data[i * 4 + 0] * (1 - alpha)) + (color[0] * alpha));
+				pixels.data[i * 4 + 1] = Math.floor((pixels.data[i * 4 + 1] * (1 - alpha)) + (color[1] * alpha));
+				pixels.data[i * 4 + 2] = Math.floor((pixels.data[i * 4 + 2] * (1 - alpha)) + (color[2] * alpha));
+			}
 		}
 
 		ctx.putImageData(pixels, 0, 0);
@@ -376,6 +396,36 @@ class Volume {
 		// not user visible. Also, in the old version, the default image was black,
 		// but the cube is zeroed out by default.
 		this.segmentation.renderImageSlice(ctx, axis, slice);
+	}
+
+	selectSegment (axis, slice, normx, normy) {
+		let _this = this;
+		let x,y,z;
+
+		let sizex = _this.segmentation.size.x,
+			sizey = _this.segmentation.size.y;
+
+		if (axis === 'x') {
+			x = slice,
+			y = normy * _this.segmentation.size.y,
+			z = normx * _this.segmentation.size.z;
+		}
+		else if (axis === 'y') {
+			x = normx * _this.segmentation.size.x,
+			y = slice,
+			z = normy * _this.segmentation.size.z;
+		}
+		else if (axis === 'z') {
+			x = normx * _this.segmentation.size.x,
+			y = normy * _this.segmentation.size.y,
+			z = slice;
+		}
+
+		let segid = _this.segmentation.get(x, y, z);
+		
+		if (segid > 0) {
+			_this.segments[segid] = true;
+		}
 	}
 }
 
