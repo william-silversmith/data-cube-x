@@ -110,8 +110,8 @@
 			}
 
 			function hardRender () {
-				vol.channel.renderGrayImageSlice(window.channelctx, AXIS, SLICE);
-				vol.segmentation.renderImageSlice(window.segctx, AXIS, SLICE);
+				vol.renderChannelSlice(window.channelctx, AXIS, SLICE);
+				vol.renderSegmentationSlice(window.segctx, AXIS, SLICE);
 
 				$('#axis').text(AXIS);
 				$('#slice').text(SLICE);

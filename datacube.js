@@ -4,6 +4,9 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var _loadingimg = new Image();
+_loadingimg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAATpJREFUeNrs18ENgCAQAEE09iJl0H8F2o0N+DTZh7NPcr/JEdjWWuOtc87X8/u6zH84vw+lAQAAQAAACMA/O7zH23kb4AoCIAAABACAin+A93g7bwNcQQAEAIAAAFDxD/Aeb+dtgCsIgAAAEAAAKv4B3uPtvA1wBQEQAAACAEDFP8B7vJ23Aa4gAAIAQAAAqPgHeI+38zbAFQRAAAAIAAAV/wDv8XbeBriCAAgAAAEAoOIf4D3eztsAVxAAAQAgAABU/AO8x9t5G+AKAiAAAAQAgIp/gPd4O28DXEEABACAAABQ8Q/wHm/nbYArCIAAABAAACr+Ad7j7bwNcAUBEAAAAgBAxT/Ae7ydtwGuIAACAEAAAKj4B3iPt/M2wBUEQAAACAAAFf8A7/F23ga4ggAIAAABAKCgR4ABAIa/f2QspBp6AAAAAElFTkSuQmCC";
+
 /* Volume
  *
  * Represents a 3D bounding box in the data set's global coordinate space.
@@ -366,6 +369,41 @@ var Volume = function () {
 			// handle current slice later
 
 			return specs;
+		}
+	}, {
+		key: "renderChannelSlice",
+		value: function renderChannelSlice(ctx, axis, slice) {
+			var _this = this;
+
+			ctx.drawImage(_loadingimg, 0, 0);
+			ctx.drawImage(_loadingimg, 128, 0);
+			ctx.drawImage(_loadingimg, 0, 128);
+			ctx.drawImage(_loadingimg, 128, 128);
+
+			var loading = ctx.getImageData(0, 0, 256, 256);
+			var loading32 = new Uint32Array(loading.data.buffer);
+
+			var pixels = _this.channel.grayImageSlice(axis, slice);
+			var slice32 = new Uint32Array(pixels.data.buffer); // creates a view, not an array
+
+			// exploting the fact that we know that there are
+			// no black pixels in our channel images and that they're gray
+			for (var i = slice32.length - 1; i >= 0; i--) {
+				// 00ffff00 b/c green and blue can be swapped on big/little endian
+				// but it doesn't matter like red and alpha. Just need to test for non
+				// black pixels. The logical ands and ors are to avoid a branch.
+				slice32[i] = slice32[i] & 0x00ffff00 && slice32[i] || loading32[i];
+			}
+
+			ctx.putImageData(pixels, 0, 0);
+		}
+	}, {
+		key: "renderSegmentationSlice",
+		value: function renderSegmentationSlice(ctx, axis, slice) {
+			// Don't need to do anything special for segmentation since it's
+			// not user visible. Also, in the old version, the default image was black,
+			// but the cube is zeroed out by default.
+			this.segmentation.renderImageSlice(ctx, axis, slice);
 		}
 	}]);
 
