@@ -493,6 +493,10 @@ var Volume = function () {
 				x = normx * _this.segmentation.size.x, y = normy * _this.segmentation.size.y, z = slice;
 			}
 
+			x = Math.round(x);
+			y = Math.round(y);
+			z = Math.round(z);
+
 			var segid = _this.segmentation.get(x, y, z);
 
 			if (segid > 0) {

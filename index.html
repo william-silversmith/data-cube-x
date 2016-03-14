@@ -71,7 +71,8 @@
 			});
 
 			$(document).on('wheel', function (e) {
-				var delta = clamp(e.originalEvent.deltaY, -5, 5);
+				var delta = clamp(e.originalEvent.deltaY, -1, 1);
+				delta = Math.round(delta);
 
 				SLICE += delta;
 				SLICE = clamp(SLICE, 0, 255);

@@ -462,6 +462,10 @@ class Volume {
 			z = slice;
 		}
 
+		x = Math.round(x);
+		y = Math.round(y);
+		z = Math.round(z);
+
 		let segid = _this.segmentation.get(x, y, z);
 		
 		if (segid > 0) {
