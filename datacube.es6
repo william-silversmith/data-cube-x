@@ -55,9 +55,8 @@ class Volume {
 
 		$.getJSON("http://eyewire.org/1.0/task/" + this.task_id + "/volumes")
 			.done(function (task) {
-				let channel_promise = _this.loadVolume(task.channel_id, _this.channel);
-				//let channel_promise = _this.loadMovieVolume('./channel/channel.webm', _this.channel);
-				let seg_promise = _this.loadVolume(task.segmentation_id, _this.segmentation);
+				let channel_promise = _this.loadBroadway(_this.channel, './testdata/1457725708.mp4');
+				let seg_promise = _this.loadLZMA(_this.segmentation, './testdata/332.lzma');
 
 				$.when(channel_promise, seg_promise)
 					.done(function () {
@@ -84,20 +83,7 @@ class Volume {
 	 * Return: float [0, 1]
 	 */
 	loadingProgress () {
-		if (this.segmentation.loaded && this.channel.loaded) {
-			return 1;
-		}
-		else if (this.segmentation.clean && this.channel.clean) {
-			return 0;
-		}
-		else if (this.requests.length === 0) {
-			return 0;
-		}
-
-		let specs = this.generateUrls();
-
-		let resolved = this.requests.filter(req => req.state() !== 'pending');
-		return resolved.length / (2 * specs.length);
+		return (this.segmentation.progress + this.channel.progress) / (256 * 2);
 	}
 
 	/* abort
@@ -214,6 +200,50 @@ class Volume {
 		}
 
 		return deferred;
+	}
+
+	loadBroadway (cube, url) {
+		cube.progress = 0;
+		var frame = 0;
+		var player = new MP4Player(new Stream(url), true, function (imgdata) {
+			cube.insertYUV(imgdata, 256, frame);
+			frame++;
+			cube.progress++;
+
+			if (frame === 255) {
+				broadWayDone.resolve();
+			}
+		});
+		player.play();
+
+		var broadWayDone = $.Deferred().done(function () {
+			cube.loaded = true;
+		});
+
+		return broadWayDone;
+	}
+
+	loadLZMA (cube, url) {
+		var myLZMA = new LZMA('./lzma/lzma_worker.js');
+
+		new Stream(url).readAll(null, function (data) {
+			var start = Date.now();
+			myLZMA.decompress(data, function on_decompress_complete(result) {
+				cube.cube = new Uint16Array(result.buffer);
+			}, function on_decompress_progress_update(percent) {
+				cube.progress = (percent / 100) * 256;
+			});
+			
+			done.resolve();
+		});
+
+
+		var done = $.Deferred().done(function () { // test code
+			cube.progress = 256;
+			cube.loaded = true;
+		});
+
+		return done;
 	}
 
 	/* loadVolume
@@ -679,6 +709,15 @@ class DataCube {
 		_this.clean = false;
 
 		return this;
+	}
+
+
+	insertYUV (imgdata, width, frame) {
+		var start = frame * width * width;
+		var end = start + width * width;
+		for (let fi = 0, ci = start; ci < end; fi++, ci++) {
+			this.cube[ci] = imgdata[fi];
+		}
 	}
 
 	/* get
