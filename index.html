@@ -7,7 +7,7 @@
 
 		<style>
 			html {
-				overflow: hidden;
+				/*overflow: hidden;*/
 			}
 
 			canvas {
@@ -26,10 +26,22 @@
 			var _needsrender = true;
 
 			$(document).ready(function () {
+				var size = {
+					x: 1024,
+					y: 1024,
+					z: 128,
+				};
+
 				window.vol = new Volume({ 
 					task_id: 332,
-					channel: new DataCube({ bytes: 1 }), 
-					segmentation: new DataCube({ bytes: 2 }), 
+					channel: new DataCube({ 
+						bytes: 1,
+						size: size,
+					}), 
+					segmentation: new DataCube({ 
+						bytes: 2,
+						size: size,
+					}), 
 				});
 
 				var vol = window.vol;
@@ -41,7 +53,7 @@
 					render();
 				}, 200);
 
-				vol.load().always(function () {
+				vol.fakeLoad().always(function () {
 					clearInterval(progress);
 					render();
 
@@ -75,7 +87,7 @@
 				delta = Math.round(delta);
 
 				SLICE += delta;
-				SLICE = clamp(SLICE, 0, 255);
+				SLICE = clamp(SLICE, 0, 127);
 
 				render();
 			});
@@ -150,10 +162,10 @@
 		<p>AXIS: <span id="axis"></span></p>
 		<p>SLICE: <span id="slice"></span></p>
 		CHANNEL<br>
-		<canvas id="channel" width="256" height="256"></canvas>
+		<canvas id="channel" width="1024" height="1024"></canvas>
 		<br>
 		SEGMENTATION<br>
-		<canvas id="segmentation" width="256" height="256"></canvas>
+		<canvas id="segmentation" width="1024" height="1024"></canvas>
 		<p>LOADING: <span id="loading"></span></p>
 		<p>CAPTURES: <span id="captures"></span></p>
 

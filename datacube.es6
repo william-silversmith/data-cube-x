@@ -135,12 +135,24 @@ class Volume {
 
 		let specs = this.generateUrls(vid);
 
-		specs.forEach(function (spec) {
-			let img = new Image(128, 128); // test code
-			for (let i = 0; i < spec.depth; i++) {
-				cube.insertImage(img, spec.x, spec.y, spec.z + i);
-			}
-		});
+		let canvas = document.createElement('canvas');
+		canvas.width = 2048;
+		canvas.height = 2048;
+
+		let ctx = canvas.getContext('2d');
+
+		let max_depth = cube.size.z;
+
+		let start = 0, end = 255;
+		let factor = (end - start) / max_depth;
+
+		for (let z = 0; z < max_depth; z++) {
+			let color = Math.trunc(factor * z);
+			ctx.fillStyle = `rgb(${color}, 0, 0)`;
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+			cube.insertCanvas(canvas, 0, 0, z);
+		}
 
 		return $.Deferred().resolve().done(function () { // test code
 			cube.loaded = true;
@@ -363,13 +375,10 @@ class Volume {
 	renderChannelSlice (ctx, axis, slice) {
 		let _this = this;
 
-		ctx.drawImage(_loadingimg, 0, 0);
-		ctx.drawImage(_loadingimg, 128, 0);
-		ctx.drawImage(_loadingimg, 0, 128);
-		ctx.drawImage(_loadingimg, 128, 128);
-
-		let loading = ctx.getImageData(0, 0, 256, 256);
-		let loading32 = new Uint32Array(loading.data.buffer);
+		// ctx.drawImage(_loadingimg, 0, 0);
+		// ctx.drawImage(_loadingimg, 128, 0);
+		// ctx.drawImage(_loadingimg, 0, 128);
+		// ctx.drawImage(_loadingimg, 128, 128);
 
 		let pixels = _this.channel.grayImageSlice(axis, slice);
 		let slice32 = new Uint32Array(pixels.data.buffer); // creates a view, not an array
@@ -389,7 +398,7 @@ class Volume {
 			// 00ffff00 b/c green and blue can be swapped on big/little endian
 			// but it doesn't matter like red and alpha. Just need to test for non
 			// black pixels. The logical ands and ors are to avoid a branch.
-			slice32[i] = ((slice32[i] & 0x00ffff00) && slice32[i]) || loading32[i];
+			slice32[i] = ((slice32[i] & 0x00ffff00) && slice32[i]) || 0xff0000;
 
 			// overlayColor[i] + buffer[startIndex + i] * (1 - alpha);
 			if (_this.segments[segid]) {
@@ -492,6 +501,7 @@ class Volume {
  */
 class DataCube {
 	constructor (args) {
+		this.id = args.id || null;
 		this.bytes = args.bytes || 1;
 		this.size = args.size || { x: 256, y: 256, z: 256 };
 		this.cube = this.materialize();
@@ -517,7 +527,12 @@ class DataCube {
 
 		let size = this.size;
 
-		return new ArrayType(size.x * size.y * size.z);
+		let cube = new ArrayType(size.x * size.y * size.z);
+
+		// TypedArray.fill is current as of Chrome 45
+		// As of this writing we're on newly released Chrome 49
+		// Safari 9.0.3 also does not have it.
+		return polyfill_array_fill(cube);
 	}
 
 	/* clear
@@ -732,11 +747,6 @@ class DataCube {
 			zsize = _this.size.z;
 
 		const xysize = xsize * ysize;
-
-		// Go super fast... just because we can
-		if (axis === 'z' && !buffer) {
-			return _this.cube.subarray(xysize * index, xysize * (index + 1));
-		}
 
 		let faces = {
 			x: ['y', 'z'],
@@ -980,6 +990,59 @@ class DataCube {
 		return ArrayType;
 	}
 }
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill
+function polyfill_array_fill (array) {
+	if (array.fill) {
+		return array;
+	}
+
+	array.fill = function (value) {
+	    // Steps 1-2.
+	    if (this == null) {
+	      throw new TypeError('this is null or not defined');
+	    }
+
+	    var O = Object(this);
+
+	    // Steps 3-5.
+	    var len = O.length >>> 0;
+
+	    // Steps 6-7.
+	    var start = arguments[1];
+	    var relativeStart = start >> 0;
+
+	    // Step 8.
+	    var k = relativeStart < 0 ?
+	      Math.max(len + relativeStart, 0) :
+	      Math.min(relativeStart, len);
+
+	    // Steps 9-10.
+	    var end = arguments[2];
+	    var relativeEnd = end === undefined ?
+	      len : end >> 0;
+
+	    // Step 11.
+	    var final = relativeEnd < 0 ?
+	      Math.max(len + relativeEnd, 0) :
+	      Math.min(relativeEnd, len);
+
+	    // Step 12.
+	    while (k < final) {
+	      O[k] = value;
+	      k++;
+	    }
+
+	    // Step 13.
+	    return O;
+	};
+
+	return array;
+}
+
+
+
+
 
 
 
